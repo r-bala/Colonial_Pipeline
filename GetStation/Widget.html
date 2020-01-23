@@ -1,0 +1,93 @@
+<div>
+	<div data-dojo-attach-point="tabsNode"></div>
+	<div data-dojo-type="dijit/layout/ContentPane" data-dojo-attach-point="geometryToMeasure"
+		data-dojo-props="selected:true">
+		<div class="sectionTitle" data-dojo-attach-point="inputPrompt">${nls.clickRoute}</div>
+		<div class="esriCTWrapper">
+			<div class="esriCTDijitWrapper" style="padding: 5px 0px 5px 0px;">
+				<input class="switch-toggle" data-dojo-type="dijit/form/CheckBox" data-dojo-attach-point="multiClick"
+					checked="false" />
+			</div>
+			<div class="esriCTLabel">Multiple Point</div>
+		</div>
+		<table>
+			<tr class="jimu-r-row">
+				<td><img data-dojo-attach-point="inputDraw" 
+						class="draw-point">
+				<td>
+				<td>OR</td>
+				<td>
+					<div class="btn-add-section" data-dojo-attach-point="btnAddXYField">
+						<span class="btn-add-icon"></span>
+						<span class="btn-add-label">${nls.addField}</span>
+					</div>
+
+				</td>
+			</tr>
+			<tr>
+				<td colspan="4">
+					<div data-dojo-attach-point="xyTable" data-dojo-type="jimu/dijit/SimpleTable"
+				      data-dojo-props='fields:[{name:"x",title:"${nls.xHint}","class":"label",type:"empty"},{name:"y",title:"${nls.yHint}","class":"label",type:"empty"},{name:"actions",title:"${nls.actions}","class":"actions",type:"actions",actions:["up","down","delete"]}]'>
+				    </div>
+				</td>
+			</tr>
+		</table>
+		<div class="jimu-r-row">
+			<button data-dojo-attach-point="btnUndo" data-dojo-type="dijit/form/Button" disabled>
+				${nls.undo}</button>
+			<button data-dojo-attach-point="btnRedo" data-dojo-type="dijit/form/Button" disabled>
+				${nls.redo}</button>
+			<button data-dojo-attach-point="measureBtn" data-dojo-type="dijit/form/Button" disabled>${nls.measure}</button>
+			<button data-dojo-attach-point="exportBtn" data-dojo-type="dijit/form/Button">${nls.export}</button>
+			<button data-dojo-attach-point="geomToMeasureClear" data-dojo-type="dijit/form/Button">${nls.clear}</button>
+		</div>
+		<div data-dojo-attach-point="measureResultsdiv"></div>
+	</div>
+	<div data-dojo-type="dijit/layout/ContentPane" data-dojo-attach-point="measureToGeometry">
+		<table>
+			<tr class="row">
+				<td>${nls.lineName}:</td>
+				<td><span data-dojo-attach-point="lineNameFilter"></span>
+					<!--input type="text" data-dojo-type="dijit/form/ValidationTextBox" data-dojo-attach-point="lineName" value="2001 WEST" /-->
+				</td>
+			</tr>
+
+			<tr class="row">
+				<td>${nls.measureType}:</td>
+				<td>
+					<input type="radio" name="measureType" data-dojo-attach-point="engRadio" checked
+						value="Engineering" />
+					<label for="engRadio">${nls.engineering}</label>
+					<input type="radio" name="measureType" data-dojo-attach-point="contRadio" value="Continuous" />
+					<label for="contRadio">${nls.cummulitive}</label>
+					<input type="radio" name="measureType" data-dojo-attach-point="mileRadio" value="Milepost" />
+					<label for="mileRadio">${nls.milepost}</label>
+				</td>
+			</tr>
+
+			<tr class="row">
+				<td>${nls.fromMeasure}:</td>
+				<td><input type="text" data-dojo-type="dijit/form/ValidationTextBox"
+						data-dojo-props="regExp:'^-?\\d+$', invalidMessage:'${nls.invalidStationing}'"
+						data-dojo-attach-point="beginMeasure" value='${nls.fromStationValue}' /></td>
+			</tr>
+			<tr class="row">
+				<td>${nls.toMeasure}:</td>
+				<td><input type="text" data-dojo-type="dijit/form/ValidationTextBox"
+						data-dojo-props="regExp:'^-?\\d+$', invalidMessage:'${nls.invalidStationing}'"
+						data-dojo-attach-point="endMeasure" value="${nls.toStationValue}" /> (optional)</td>
+			</tr>
+		</table>
+		<div class="jimu-r-row">
+			<button data-dojo-attach-point="locateBtn" data-dojo-type="dijit/form/Button">${nls.locate}</button>
+			<button data-dojo-attach-point="measureToGeomExportBtn"
+				data-dojo-type="dijit/form/Button">${nls.export}</button>
+			<button data-dojo-attach-point="measureToGeomClear" data-dojo-type="dijit/form/Button">${nls.clear}</button>
+		</div>
+		<div data-dojo-attach-point="resultsdiv"></div>
+	</div>
+	<div data-dojo-type="dijit/layout/ContentPane" data-dojo-attach-point="dndPanel" style="height:auto !important;">
+		<div data-dojo-attach-point="containerNode" style="position:relative; height:100%">
+		</div>
+	</div>
+</div>

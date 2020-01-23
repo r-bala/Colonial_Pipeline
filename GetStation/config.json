@@ -1,0 +1,97 @@
+{
+  "panelSize": {
+    "pos":{
+      "width":505
+    }
+  },
+   "csvLayerSymbol":{
+	  "type": "esriPMS",
+	  "url": "http://static.arcgis.com/images/Symbols/Basic/RedSphere.png",
+	  "imageData": "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",
+	  "contentType": "image/png",
+	  "width": 20,
+	  "height": 20
+  },
+  "geomToMeasureSymbol":{
+	"angle":0,
+	"xoffset":0,
+	"yoffset":10,
+	"type":"esriPMS",
+	"url":"http://static.arcgis.com/images/Symbols/Shapes/YellowPin1LargeB.png",
+	"imageData":"iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAZdEVYdFNvZnR3YXJlAEFkb2JlIEltYWdlUmVhZHlxyWU8AAADImlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS4wLWMwNjAgNjEuMTM0Nzc3LCAyMDEwLzAyLzEyLTE3OjMyOjAwICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDo2NUE1OERCRkQzMUIxMUUwQUU5NUVFMEYwMTY0NzUwNSIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDo2NUE1OERDMEQzMUIxMUUwQUU5NUVFMEYwMTY0NzUwNSI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkI2QTJFNTk0RDI5QTExRTBBRTk1RUUwRjAxNjQ3NTA1IiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjY1QTU4REJFRDMxQjExRTBBRTk1RUUwRjAxNjQ3NTA1Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQg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",
+	"contentType":"image/png",
+	"width":30,
+	"height":30
+  },
+  "measureToGeometryPointSymbol":{
+	  "color": [
+		255,
+		255,
+		0,
+		230
+	  ],
+	  "size": 15,
+	  "angle": 0,
+	  "xoffset": 0,
+	  "yoffset": 0,
+	  "type": "esriSMS",
+	  "style": "esriSMSCircle",
+	  "outline": {
+		"color": [
+		  255,
+		  255,
+		  0,
+		  128
+		],
+		"width": 7.5,
+		"type": "esriSLS",
+		"style": "esriSLSSolid"
+	  }
+	},
+  "measureToGeometryLineSymbol":{
+	  "color": [
+		255,
+		255,
+		0,
+		255
+	  ],
+	  "width": 6,
+	  "type": "esriSLS",
+	  "style": "esriSLSSolid"
+	},
+  "zoomScale": 15,
+  "showMilePost": true,
+  "plusNotation" : false,
+  "enableSnapping": true,
+  "snapTolerance":20,
+  "networkLayers": [
+    {
+      "url": "https://oneok-pilot.esri.com/server/rest/services/CPC_NET/MapServer/exts/LRServer/networkLayers/2",
+      "queryUrl": "https://oneok-pilot.esri.com/server/rest/services/CPC_NET/MapServer/2",
+      "queryField": "routename",
+      "routeIdField": "routeid",
+      "type": "Continuous",
+      "measureToGeometry": "/measureToGeometry",
+      "geometryToMeasure": "/geometryToMeasure",
+	  "translate": "/translate",
+      "targetNetworkLayerIds": [1],
+	  "tolerance": 0.000008983153 
+    },
+    {
+      "url": "https://oneok-pilot.esri.com/server/rest/services/CPC_NET/MapServer/exts/LRServer/networkLayers/1",
+      "queryUrl": "https://oneok-pilot.esri.com/server/rest/services/CPC_NET/MapServer/1",
+      "queryField": "linename",
+	  "lineIdField": "lineid",
+      "primaryName": "Line names",
+      "primarysuggestionTemplate": "${linename}",
+      "routeIdField": "routeid",
+      "routeNameField": "routename",
+      "type": "Engineering",
+      "measureToGeometry": "/measureToGeometry",
+      "geometryToMeasure": "/geometryToMeasure",
+      "translate": "/translate",
+      "targetNetworkLayerIds": [2],
+	  "tolerance": 0.000008983153 
+    }
+  ]
+}

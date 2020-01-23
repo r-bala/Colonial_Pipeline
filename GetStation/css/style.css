@@ -1,0 +1,406 @@
+.sectionTitle {
+    color: #888888;
+    font-size: 1.2em;
+    margin-bottom: 15px;
+}
+
+.row {
+	height: 30px;
+}
+
+.gridDiv {
+    min-height: 20em;
+}
+
+#dgrid {
+    height: 20em;
+}
+
+.caption{
+  width: 40px;
+  padding: 2px;
+}
+
+.capVal{
+  width: 60px;
+  padding: 2px;
+}
+
+.hint{
+  color:#888888;
+  font-size: 11px;
+}
+
+.attrName {
+	color: gray;
+	font-size:12px;
+}
+
+.attrValue {
+	color: blue;
+	font-size:12px;
+}
+	
+
+.right{
+  float:right;
+}
+.btn-add-section {
+  display: inline-block;
+  overflow: hidden;
+  height: 24px;
+  margin-left: 1px;
+  margin-bottom: 3px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #538ec8;
+  margin-top: 8px;
+}
+
+.btn-add-section .btn-add-icon {
+  float: left;
+  height: 100%;
+  width: 14px;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-image: url(images/add.png);
+}
+
+
+.btn-add-section .btn-add-label {
+  float: left;
+  height: 100%;
+  line-height: 24px;
+  vertical-align: middle;
+  margin-left: 7px;
+  text-decoration: underline;
+}
+
+.GetStation .searchInputGroup {
+  border-right: black 1px solid;
+}
+.GetStation .searchBtn{
+  display:none;
+}
+.GetStation .arcgisSearch{
+      width: 300px;
+}
+
+.undoIcon { background-image:url(images/undo.png)!important; background-repeat: no-repeat !important; width:48px!important; height:48px!important; }
+.redoIcon { background-image:url(images/redo.png)!important; background-repeat: no-repeat!important; width:48px!important; height:48px!important;}
+.undoGrayIcon { background-image:url(../images/undo_gray.png) !important; background-repeat: no-repeat!important; width:48px!important; height:48px!important; }
+.redoGrayIcon { background-image:url(../images/redo_gray.png)!important;background-repeat: no-repeat!important; width:48px!important; height:48px!important; }
+
+
+.switch-toggle.dijitCheckBox {
+  height: 16px!important;
+  width: 28px!important;
+  border: 0 none!important;
+  background: #adadad!important;
+  position: relative!important;
+  float: left!important;
+  cursor: pointer!important;
+  -moz-border-radius: 10px!important;
+  -webkit-border-radius: 10px!important;
+  border-radius: 10px!important;
+}
+
+.switch-toggle.dijitCheckBox {
+  float: left!important;
+}
+
+.switch-toggle.dijitCheckBox:before {
+  content: ""!important;
+  background: #f8f8f8!important;
+  position: absolute!important;
+  padding: 0!important;
+  height: 12px!important;
+  width: 12px!important;
+  left: auto!important;
+  right: 14px!important;
+  top: 2px!important;
+  z-index: 1!important;
+  -webkit-transition: right 0.3s!important;
+  -moz-transition: right 0.3s!important;
+  -o-transition: right 0.3s!important;
+  transition: right 0.3s!important;
+  -moz-border-radius: 50%!important;
+  -webkit-border-radius: 50%!important;
+  border-radius: 50%!important;
+}
+
+.switch-toggle.dijitCheckBox input {
+  width: 100%!important;
+  height: 100%!important;
+  position: absolute!important;
+  left: 0!important;
+  z-index: 2!important;
+}
+
+.switch-toggle.dijitCheckBox.dijitCheckBoxChecked {
+  background: #50ad4e!important;
+}
+
+.switch-toggle.dijitCheckBox.dijitCheckBoxChecked:before {
+  right: 2px!important;
+}
+
+/* distace and height  */
+
+.esriCTWrapper {
+  width: 100%;
+  overflow: hidden;
+  padding: 5px 5px;
+}
+
+.esriCTLabel {
+  width: 30%;
+  padding: 5px 10px 5px 0px;
+  word-break: break-word;
+  float: left;
+  font-size: 14px;
+}
+
+.esriCTDijitWrapper {
+  width: 70%;
+  float: right;
+}
+
+.jimu-simple-table .head-section{
+	height: 0px!important;
+}
+
+
+
+jimu-widget-add-data .add-file-pane .file-form label {
+  display: inline-block;
+  font-size: 11px;
+  text-transform: uppercase;
+  padding: 5px;
+  margin-right: 5px;
+}
+.search-pane .item-card .action-bar a.disabled,
+.add-url-pane .action-bar a.disabled,
+.add-file-pane .file-form label.disabled,
+.add-file-pane .drop-area.disabled {
+  opacity: 0.3;
+}
+.search-pane .item-card .action-bar .message {
+  font-size: 10px;
+  font-style: italic;
+  margin-left: 4px;
+  margin-right: 4px;
+}
+.add-url-pane .action-bar .jimu-btn,
+.add-file-pane .file-form label {
+  margin-right: 0;
+  min-width: 180px;
+  white-space: normal;
+}
+.add-file-pane .intro ul {
+  font-size: 10px;
+  margin: 0;
+  padding: 2px 0 2px 20px;
+}
+.add-file-pane .intro ul .note {
+  font-style: italic;
+}
+.jimu-rtl .add-file-pane .intro ul {
+  padding: 2px 20px 2px 0;
+}
+.add-file-pane .generalize-options .jimu-checkbox .checkbox {
+  margin-top: 0;
+  vertical-align: middle;
+}
+.add-file-pane .generalize-options .jimu-checkbox .label {
+  font-size: 12px;
+  vertical-align: middle;
+  cursor: pointer;
+}
+.add-file-pane .browse-or-drop {
+  /*text-align: center;*/
+}
+.add-file-pane .or {
+  display: block;
+  margin: 20px auto;
+  font-size: 11px;
+  color: #898989;
+  width: 90%;
+  max-width: 400px;
+  line-height: 20px;
+  position: relative;
+}
+.add-file-pane .or:before,
+.add-file-pane .or:after {
+  content: "";
+  display: block;
+  height: 1px;
+  width: 35%;
+  background: #eee;
+  position: absolute;
+  top: 9px;
+  left: 0;
+}
+.add-file-pane .or:after {
+  right: 0;
+  left: auto;
+}
+.add-file-pane .or b {
+  display: inline-block;
+  padding-right: 5px;
+}
+.add-file-pane .drop-area {
+  width: 100%;
+  background: #fff;
+  margin: 10px auto 0;
+  padding: 25px 50px 35px;
+  border: 1px dashed #ccc;
+  color: #898989;
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.75;
+  text-transform: uppercase;
+  position: relative;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  border-radius: 5px;
+  -webkit-transition: opacity ease-in-out 0.15s;
+  -moz-transition: opacity ease-in-out 0.15s;
+  -o-transition: opacity ease-in-out 0.15s;
+  transition: opacity ease-in-out 0.15s;
+}
+.add-file-pane .drop-area i {
+  color: #485566;
+  font-style: normal;
+}
+.add-file-pane .drop-area a.drop-area-hint {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 5px;
+  padding: 10px;
+  font-size: 14px;
+  line-height: 1;
+}
+.add-file-pane .drop-area.hit {
+  background: #f9f9f9;
+  border-color: #24b5cc; /* #24b5cc #90ee90 */
+}
+.add-file-pane .drop-area.hit > * {
+  pointer-events: none; /* so that children don't fire dragenter/dragleave */
+  display: none;
+}
+.add-file-pane .drop-area.hit .supported-file-types {
+  display: block;
+}
+.add-file-pane .drop-area.hit .upload-arrow {
+  display: block;
+  width: 48px;
+  height: 48px;
+  background: url(images/arrow_up.png) no-repeat;
+  margin: 0 auto;
+  -moz-animation: updload-arrow-animation 1s infinite;
+  -webkit-animation: updload-arrow-animation 1s infinite;
+  animation: updload-arrow-animation 1s infinite;
+}
+.add-file-pane .drop-area .supported-file-types {
+  margin: 15px 0 35px;
+  opacity: .5;
+  pointer-events: none;
+  -webkit-transition: opacity ease-in-out 0.15s;
+  -moz-transition: opacity ease-in-out 0.15s;
+  -o-transition: opacity ease-in-out 0.15s;
+  transition: opacity ease-in-out 0.15s;
+}
+.add-file-pane .drop-area .supported-file-types img {
+  width: 45px;
+  margin-left: -5px;
+  position: relative;
+  -webkit-transition: all ease-in-out 0.2s;
+  -moz-transition: all ease-in-out 0.2s;
+  -o-transition: all ease-in-out 0.2s;
+  transition: all ease-in-out 0.2s;
+}
+
+.add-file-pane .drop-area .supported-file-types img.first-type-icon {
+  -moz-transform: rotate(-8deg);
+  -moz-transform-origin: right bottom;
+  -webkit-transform: rotate(-8deg);
+  -webkit-transform-origin: right bottom;
+  -o-transform: rotate(-8deg);
+  -o-transform-origin: right bottom;
+  transform: rotate(-8deg);
+  transform-origin: right bottom;
+  bottom: -1px;
+}
+.add-file-pane .drop-area .supported-file-types img.second-first-type-icon {
+  -moz-transform: rotate(-3deg);
+  -moz-transform-origin: right bottom;
+  -webkit-transform: rotate(-3deg);
+  -webkit-transform-origin: right bottom;
+  -o-transform: rotate(-3deg);
+  -o-transform-origin: right bottom;
+  transform: rotate(-3deg);
+  transform-origin: right bottom;
+}
+.add-file-pane .drop-area .supported-file-types img.second-last-type-icon {
+  -moz-transform: rotate(3deg);
+  -moz-transform-origin: left bottom;
+  -webkit-transform: rotate(3deg);
+  -webkit-transform-origin: left bottom;
+  -o-transform: rotate(3deg);
+  -o-transform-origin: left bottom;
+  transform: rotate(3deg);
+  transform-origin: left bottom;
+}
+.add-file-pane .drop-area .supported-file-types img.last-type-icon {
+  -moz-transform: rotate(8deg);
+  -moz-transform-origin: left bottom;
+  -webkit-transform: rotate(8deg);
+  -webkit-transform-origin: left bottom;
+  -o-transform: rotate(8deg);
+  -o-transform-origin: left bottom;
+  transform: rotate(8deg);
+  transform-origin: left bottom;
+  bottom: -1px;
+}
+.add-file-pane .drop-area.hit .supported-file-types {
+  opacity: 1;
+}
+.add-file-pane .drop-area.hit .supported-file-types img {
+  margin-left: 0px;
+}
+.add-file-pane .drop-area.hit .supported-file-types img.first-type-icon {
+  -moz-transform: rotate(-12deg);
+  -webkit-transform: rotate(-12deg);
+  -o-transform: rotate(-12deg);
+  transform: rotate(-12deg);
+  bottom: -3px;
+}
+.add-file-pane .drop-area.hit .supported-file-types img.second-first-type-icon {
+  -moz-transform: rotate(-5deg);
+  -webkit-transform: rotate(-5deg);
+  -o-transform: rotate(-5deg);
+  transform: rotate(-5deg);
+}
+.add-file-pane .drop-area.hit .supported-file-types img.second-last-type-icon {
+  -moz-transform: rotate(5deg);
+  -webkit-transform: rotate(5deg);
+  -o-transform: rotate(5deg);
+  transform: rotate(5deg);
+}
+.add-file-pane .drop-area.hit .supported-file-types img.last-type-icon {
+  -moz-transform: rotate(12deg);
+  -webkit-transform: rotate(12deg);
+  -o-transform: rotate(12deg);
+  transform: rotate(12deg);
+  bottom: -3px;
+}
+.add-file-pane .file-form {
+  display: inline-block;
+}
+
+.DartTheme .add-file-pane .drop-area {
+  background: transparent;
+  border-color: #ccc;
+}

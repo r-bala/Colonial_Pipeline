@@ -1,0 +1,17 @@
+<div style="position:relative; height:100%">
+	<div class="sectionTitle" data-dojo-attach-point="dndTitle">${nls.dndCaption}</div>
+	<div>
+		<input type="radio" name="dndchoice" data-dojo-attach-point="locationRadio" checked value="location"/>
+		<label for="radioOne">${nls.geoLocation}</label>
+	  <input type="radio" name="dndchoice" data-dojo-attach-point="routeMeasureRadio" value="routeMeasure"/>
+		<label for="radioTwo">${nls.measureRoute}</label>
+	</div>
+	<span data-dojo-attach-point="status" style='color:red;'></span>
+	<div data-dojo-attach-point="fileNode"></div>
+	<div data-dojo-attach-point="gridDiv" class="gridDiv">
+	</div>
+	<div class="jimu-r-row">
+		<button data-dojo-attach-point="clearBtn" data-dojo-type="dijit/form/Button">${nls.clear}</button>
+		<button data-dojo-attach-point="exportBtn" data-dojo-type="dijit/form/Button">${nls.export}</button>
+	</div>
+</div>

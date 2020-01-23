@@ -1,0 +1,21 @@
+{
+  "name": "Station Locator",
+  "2D": true,
+  "3D": false,
+  "platform": "HTML",
+  "version": "2.2",
+  "wabVersion": "2.2",
+  "author": "Esri Redlands",
+  "description": "This is Get Station widget",
+  "copyright": "",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "properties": {
+    "inPanel": true,
+    "hasLocale": true,
+    "hasStyle": true,
+    "hasConfig": true,
+    "hasUIFile": true,
+    "hasSettingPage": false,
+    "IsController": false
+  }
+}
