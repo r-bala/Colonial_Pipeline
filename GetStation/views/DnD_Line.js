@@ -5,7 +5,6 @@ define(['dojo/_base/declare',
 		'jimu/dijit/Message',
 		'jimu/LayerInfos/LayerInfos',
 		'jimu/FeatureActionManager',
-		'jimu/exportUtils',
 		'dojo/on',
 		"dojo/_base/Color",
 		"dojo/dom",
@@ -25,6 +24,7 @@ define(['dojo/_base/declare',
 		"esri/geometry/Point",
 		"esri/geometry/Polyline",
 		"esri/graphic",
+		"esri/graphicsUtils",
 		"esri/request",
 		"esri/Color",
 		"esri/SpatialReference",
@@ -58,7 +58,6 @@ define(['dojo/_base/declare',
 		"esri/geometry/webMercatorUtils",
 		"esri/tasks/query",
 		'./AddFromFilePane',
-		'./Dnd_Line',
 		'.././js/utils/EsriQuery',
 		'.././js/utils/EsriQueryTask'
 	],
@@ -69,7 +68,6 @@ define(['dojo/_base/declare',
 		Message,
 		LayerInfos,
 		FeatureActionManager,
-		exportUtils,
 		on,
 		Color,
 		dom,
@@ -89,6 +87,7 @@ define(['dojo/_base/declare',
 		Point,
 		Polyline,
 		Graphic,
+		graphicsUtils,
 		esriRequest,
 		eColor,
 		SpatialReference,
@@ -100,7 +99,7 @@ define(['dojo/_base/declare',
 		ItemFileReadStore, ItemFileWriteStore, dom, domConstruct, json, parser, BorderContainer,
 		ContentPane, RadioButton, CsvStore, dojoxBase64, DataGrid, Deferred, template,
 		Popup, domUtils, Extent, Multipoint, Point, InfoTemplate, FeatureLayer, CSVLayer,
-		webMercatorUtils, Query, AddFromFilePane, DndLine, EsriQuery, EsriQueryTask) {
+		webMercatorUtils, Query, AddFromFilePane, EsriQuery, EsriQueryTask) {
 
 	return declare([_WidgetBase, _TemplatedMixin, _WidgetsInTemplateMixin], {
 
@@ -109,22 +108,22 @@ define(['dojo/_base/declare',
 
 		// Properties to be sent into constructor
 		//list of lat and lon field strings
-		latFieldStrings: ['lat', 'latitude', 'y', 'ycenter'],
-		longFieldStrings: ['lon', 'long', 'longitude', 'x', 'xcenter'],
 		fromLatFieldStrings: ['fromlat', 'fromlatitude', 'fromy', 'fromycenter', "from_y"],
 		fromLongFieldStrings: ['fromlon', 'fromlong', 'fromlongitude', 'fromx', 'fromxcenter', "from_x"],
 		toLatFieldStrings: ['tolat', 'tolatitude', 'toy', 'toycenter', "to_y"],
 		toLongFieldStrings: ['tolon', 'tolong', 'tolongitude', 'tox', 'toxcenter', "to_x"],
 		routeFieldStrings: ["routeid", "rid", "route", "routeId", "RouteId", "routeid"],
 		lineNameFieldStrings: ["linename", "lineName", "pipeName", "LineName", "PipeName"],
-		measureFieldStrings: ["measure", "meas", "beginmeasure", "cMeasure"],
 		fromMeasureFieldStrings: ["frommeasure", "frommeas", "beginmeasure", "from_measure"],
 		toMeasureFieldStrings: ["tomeasure", "tomeas", "endmeasure", "to_measure"],
 		routeField: null,
-		measureField: null,
+		fromMeasureField: null,
+		toMeasureField: null,
 		lineNameField: null,
-		latField: null,
-		longField: null,
+		fromLatField: null,
+		fromLongField: null,
+		toLatField: null,
+		toLongField: null,
 
 		postCreate: function () {
 			// summary:
@@ -132,149 +131,20 @@ define(['dojo/_base/declare',
 			// tags:
 			//    private
 			//  parser.parse();
-			this._initUI();
-			this.featureActionManager = FeatureActionManager.getInstance();
-			LayerInfos.getInstance(this.map, this.map.itemInfo).then(lang.hitch(this, function (layerInfosObj) {
-					this.layerInfosObj = layerInfosObj;
-					var layers = this.layerInfosObj.getLayerInfoArray();
-					this.own(layerInfosObj.on(
-							'layerInfosChanged',
-							lang.hitch(this, this.onLayerInfosChanged)));
-				}));
 			this.inherited(arguments);
 
 		},
 
-		resizeGrid: function () {
-			console.log("Resize Dnd grid");
-			//domStyle.set(this.gridDiv, "height", "100%");
-			console.log(query(".gridDiv").parents(".jimu-widget-frame")[0].offsetHeight);
-			var height = query(".gridDiv").parents(".jimu-widget-frame")[0].offsetHeight - 160;
-			this.grid.resize();
-			this.grid.update();
-			domStyle.set(this.gridDiv, "height", "auto");
-			domStyle.set("dgrid", "height", height + "px");
-		},
-
-		_initUI: function () {
-
-			this.own(on(this.clearBtn, "click", lang.hitch(this, this.clearAll)));
-			this.own(on(this.exportBtn, "click", lang.hitch(this, this.exportCsv)));
-
-			this.own(on(window, "resize", lang.hitch(this, this.resizeGrid)));
-
-			/*set up layout*/
-			var layout = [[{
-						'name': 'X',
-						'field': 'x',
-						'width': '100px'
-					}, {
-						'name': 'Y',
-						'field': 'y',
-						'width': '100px'
-					}, {
-						'name': 'Status',
-						'field': 'status',
-						'width': '100px'
-					}, {
-						'name': 'Route Name',
-						'field': 'routeName',
-						'width': '150px'
-					}, {
-						'name': 'Engineering Stationing',
-						'field': 'measure',
-						'width': '150px'
-					}, {
-						'name': 'Continuous Stationing',
-						'field': 'cMeasure',
-						'width': '150px'
-					}, {
-						'name': 'OID',
-						'field': 'oid',
-						'width': '100px'
-					}
-				]];
-
-			var data = {
-				items: []
-			};
-
-			var store = new ItemFileWriteStore({
-					identifier: "id",
-					data: data
-				});
-
-			this.addFromFilePane = new AddFromFilePane({
-					wabWidget: this.wabWidget,
-					i18n: this.nls
-				}, this.fileNode);
-			this.dndLine = new DndLine({
-					map: this.map,
-					nls: this.nls,
-					wabWidget: this.wabWidget,
-					engineeringLayer: this.engineeringLayer,
-					continuousLayer: this.continuousLayer,
-					mapDomNode: this.map.domNode,
-					baseDndClass: this,
-					config: this.config
-				});
-			topic.subscribe("DnDFeatures", lang.hitch(this, function (layers) {
-					console.error("Features", layers);
-					if(layers.length>0){
-						if (this.geometryType.value == "point") {
-							this.onLayerFetchComplete(this, layers[0]);
-						} else {
-							this.dndLine.preprocessLayer(this.dndLine, layers[0]);
-						}
-					} else {
-						new Message({
-							message: this.nls.fileNotProcessed
-						});
-						this.clearAll();
-					}
-				}));
-			this.addFromFilePane.startup();
-
-			/*create a new grid*/
-			this.grid = new DataGrid({
-					id: 'dgrid',
-					store: store,
-					rowsPerPage: 5,
-					rowSelector: '20px'
-				});
-
-			/*append the new grid to the div*/
-			this.grid.placeAt(this.gridDiv);
-
-			html.setStyle(this.fileNode, "display", "");
-
-			html.setStyle(this.gridDiv, "display", "none");
-
-			/*Call startup() to render the grid*/
-			this.grid.startup();
-
-			this.own(
-				on(this.grid, 'CellClick', lang.hitch(this, this.onRowClickHandler)));
-
-			/*this.grid.on("CellClick", lang.hitch(this,function(event){
-			var rowId = event.rowIndex;
-			this.grid.selection.setSelected(rowId, true);
-			this.grid.render();
-			}));*/
-
-		},
-
-		onLayerFetchComplete: function (_this, layer) {
-
+		preprocessLayer: function (_this, layer) {
 			var status = _this.status;
-
+			console.log("In Line Class");
 			var _getCumulativeMeasure = lang.hitch(_this, _this._getCumulativeMeasure);
 
 			var fieldNames = array.map(layer.fields, function (field) {
 					return field.name;
 				});
 
-			var routeMeasureRadio = _this.routeMeasureRadio;
+			var routeMeasureRadio = _this.baseDndClass.routeMeasureRadio;
 
 			var showResponse = lang.hitch(_this, _this.showResponse);
 
@@ -284,12 +154,153 @@ define(['dojo/_base/declare',
 			var routeMeasureServiceURL = _this.engineeringLayer.url + _this.engineeringLayer.measureToGeometry;
 			var serviceUrl = locationServiceURL;
 			var outputDef;
-			if (routeMeasureRadio.checked) {
-				serviceUrl = routeMeasureServiceURL;
-				outputDef = this._processRouteMeasure(_this, layer, fieldNames);
-			} else {
+			if (!routeMeasureRadio.checked) {
 				outputDef = this._processXY(_this, layer, fieldNames);
+				if (outputDef == null)
+					return;
+				outputDef.then(function (output) {
+					// Run the SOE query
+
+					esriRequest({
+						url: serviceUrl,
+						content: output.content,
+						callbackParamName: "callback",
+						handleAs: "json",
+						load: function (response) {
+							var locations = response.locations;
+							var counter = 2;
+							var additionalGraphics = [];
+							var index = layer.graphics.length * 2 - 1
+								for (var i = layer.graphics.length - 1; i >= 0; i--) {
+									if (locations[index - 1] && locations[index - 1].status == "esriLocatingOK") {
+										var result = locations[index - 1].results[0];
+										layer.graphics[i].attributes["frommeasure"] = result.measure;
+										layer.graphics[i].attributes["routeid"] = result.routeId;
+										if (locations[index] && locations[index].status == "esriLocatingOK") {
+											var toResult = locations[index].results[0];
+											layer.graphics[i].attributes["tomeasure"] = toResult.measure;
+										} else if (locations[index] && locations[index].status == "esriLocatingMultipleLocation") {
+											var matchResult = array.filter(locations[index].results, function (res) {
+													return res.routeId === result.routeId;
+												})[0];
+											if (matchResult) {
+												layer.graphics[i].attributes["tomeasure"] = matchResult.measure;
+											} else {
+												//Handle no toMeasure on the same routeId
+												//2/6 Remove the graphic for now
+												layer.graphics.splice(i, 1)
+											}
+										} else {
+											layer.graphics.splice(i, 1)
+										}
+									} else if (locations[index - 1] && locations[index - 1].status == "esriLocatingMultipleLocation") {
+										if (locations[index] && locations[index].status == "esriLocatingOK") {
+											var toResult = locations[index].results[0];
+											layer.graphics[i].attributes["tomeasure"] = toResult.measure;
+											layer.graphics[i].attributes["routeid"] = toResult.routeId;
+											var matchResult = array.filter(locations[index - 1].results, function (res) {
+													return res.routeId === toResult.routeId;
+												})[0];
+											if (matchResult) {
+												layer.graphics[i].attributes["frommeasure"] = matchResult.measure;
+											} else {
+												//Handle no toMeasure on the same routeId
+												//2/6 Remove the graphic for now
+												layer.graphics.splice(i, 1)
+											}
+										} else if (locations[index] && locations[index].status == "esriLocatingMultipleLocation") {
+											var cloneGraphic = false;
+											array.forEach(locations[index - 1].results, function (fromRes, idx) {
+												var matchResult = array.filter(locations[index].results, function (res) {
+														return res.routeId === fromRes.routeId;
+													})[0];
+												if (matchResult) {
+													if (cloneGraphic) {
+														var graphic = new Graphic(layer.graphics[i].toJson());
+														graphic.attributes["frommeasure"] = toResult.measure;
+														graphic.attributes["routeid"] = toResult.routeId;
+														graphic.attributes["tomeasure"] = matchResult.measure;
+														additionalGraphics.push(graphic);
+													} else {
+														cloneGraphic = true;
+														layer.graphics[i].attributes["frommeasure"] = toResult.measure;
+														layer.graphics[i].attributes["routeid"] = toResult.routeId;
+														layer.graphics[i].attributes["tomeasure"] = matchResult.measure;
+													}
+												} else {
+												}
+											})
+											if (!cloneGraphic) {
+												layer.graphics.splice(i, 1)
+											}
+										}
+									} else {
+										layer.graphics.splice(i, 1)
+									}
+
+									index = index - counter;
+								}
+								array.forEach(additionalGraphics, function(aGraphic){
+									layer.graphics.push(aGraphic);
+								});
+								lang.mixin(layer.fields, [{
+											"name": "routeid"
+										}, {
+											"name": "frommeasure"
+										}, {
+											"name": "tomeasure"
+										}
+									]);
+							_this.onLayerFetchComplete(_this, layer)
+						},
+						error: function (error) {
+							//params.status.innerHTML = '<br/>Error fetching measures for locations. Details:' + error.message;
+							console.error("Error fetching route measures for locations: ", error);
+							this.routeField = null;
+							this.lineNameField = null;
+							this.fromMeasureField = null;
+							this.toMeasureField = null;
+							this.fromLatField = null;
+							this.fromLongField = null;
+							this.toLatField = null;
+							this.toLongField = null;
+							new Message({
+								message: params._this.nls.fileMissingFields
+							});
+							return null;
+						}
+					});
+
+				});
+			} else {
+				_this.onLayerFetchComplete(_this, layer)
 			}
+
+		},
+
+		onLayerFetchComplete: function (_this, layer) {
+
+			var status = _this.status;
+			console.log("In Line Class");
+			var _getCumulativeMeasure = lang.hitch(_this, _this._getCumulativeMeasure);
+
+			var fieldNames = array.map(layer.fields, function (field) {
+					return field.name;
+				});
+
+			var routeMeasureRadio = _this.baseDndClass.routeMeasureRadio;
+
+			var showResponse = lang.hitch(_this, _this.showResponse);
+
+			var engineeringLayer = _this.engineeringLayer;
+
+			var locationServiceURL = _this.engineeringLayer.url + _this.engineeringLayer.geometryToMeasure;
+			var routeMeasureServiceURL = _this.engineeringLayer.url + _this.engineeringLayer.measureToGeometry;
+			var serviceUrl = locationServiceURL;
+			var outputDef;
+
+			serviceUrl = routeMeasureServiceURL;
+			outputDef = this._processRouteMeasure(_this, layer, fieldNames);
 
 			if (outputDef == null)
 				return;
@@ -307,11 +318,11 @@ define(['dojo/_base/declare',
 					_this: _this,
 					showResponse: showResponse
 				};
-				if (routeMeasureRadio.checked) {
-					_this._executeMeasureSOERequest(params);
-				} else {
-					_this._executeSOERequest(params);
-				}
+				//if (routeMeasureRadio.checked) {
+				_this._executeMeasureSOERequest(params);
+				/*	} else {
+				_this._executeSOERequest(params);
+				}*/
 			});
 		},
 
@@ -394,7 +405,8 @@ define(['dojo/_base/declare',
 			var def = new Deferred();
 			var routeFieldStrings = _this.routeFieldStrings;
 			var lineNameFieldStrings = _this.lineNameFieldStrings;
-			var measureFieldStrings = _this.measureFieldStrings;
+			var fromMeasureFieldStrings = _this.fromMeasureFieldStrings;
+			var toMeasureFieldStrings = _this.toMeasureFieldStrings;
 			var map = _this.map;
 			var tolerance = 0.005;
 			if (_this.engineeringLayer.tolerance) {
@@ -412,18 +424,22 @@ define(['dojo/_base/declare',
 					_this.lineNameField = fieldName;
 				}
 
-				matchId = dojo.indexOf(measureFieldStrings, fieldName.toLowerCase());
+				matchId = dojo.indexOf(fromMeasureFieldStrings, fieldName.toLowerCase());
 				if (matchId !== -1) {
-					_this.measureField = fieldName;
+					_this.fromMeasureField = fieldName;
+				}
+				matchId = dojo.indexOf(toMeasureFieldStrings, fieldName.toLowerCase());
+				if (matchId !== -1) {
+					_this.toMeasureField = fieldName;
 				}
 			});
 
 			var lookUpDef;
-			if(!_this.measureField){
+			if (!_this.fromMeasureField || !_this.toMeasureField) {
 				new Message({
-						message: _this.nls.routeIdAndlineNameFieldsNotFound
-					});
-					return null;
+					message: _this.nls.routeIdAndlineNameFieldsNotFound
+				});
+				return null;
 			}
 			if (!_this.routeField) {
 				if (_this.lineNameField) {
@@ -436,14 +452,14 @@ define(['dojo/_base/declare',
 					return null;
 				}
 			}
-			
 
 			if (lookUpDef) {
 				lookUpDef.then(function (routeIds) {
 					var locations = new Array();
 					array.forEach(layer.graphics, function (feature) {
 
-						var measure = parseFloat(feature.attributes[_this.measureField]);
+						var fromMeasure = parseFloat(feature.attributes[_this.fromMeasureField]);
+						var toMeasure = parseFloat(feature.attributes[_this.toMeasureField]);
 						var routeIdObjs = array.filter(routeIds, function (route) {
 								return route.lineName == feature.attributes[_this.lineNameField];
 							});
@@ -453,7 +469,8 @@ define(['dojo/_base/declare',
 								var measureLocation = {
 									'routeId': routeId,
 									'lineName': feature.attributes[_this.lineNameField],
-									'measure': measure
+									'fromMeasure': fromMeasure,
+									'toMeasure': toMeasure
 								};
 								locations.push(measureLocation);
 							});
@@ -479,11 +496,13 @@ define(['dojo/_base/declare',
 				var locations = new Array();
 				array.forEach(layer.graphics, function (feature) {
 					var routeId = feature.attributes[_this.routeField];
-					var measure = parseFloat(feature.attributes[_this.measureField]);
+					var fromMeasure = parseFloat(feature.attributes[_this.fromMeasureField]);
+					var toMeasure = parseFloat(feature.attributes[_this.toMeasureField]);
 
 					var measureLocation = {
 						'routeId': routeId === undefined ? "" : routeId,
-						'measure': measure
+						'fromMeasure': fromMeasure,
+						'toMeasure': toMeasure
 					};
 					locations.push(measureLocation);
 				});
@@ -509,42 +528,65 @@ define(['dojo/_base/declare',
 
 		_processXY: function (_this, layer, fieldNames) {
 			var def = new Deferred();
-			var latField,
-			longField;
-			var latFieldStrings = _this.latFieldStrings;
-			var longFieldStrings = _this.longFieldStrings;
+			var fromLatField,
+			fromLongField,
+			toLatField,
+			toLongField;
+			var fromLatFieldStrings = _this.fromLatFieldStrings;
+			var fromLongFieldStrings = _this.fromLongFieldStrings;
+			var toLatFieldStrings = _this.toLatFieldStrings;
+			var toLongFieldStrings = _this.toLongFieldStrings;
 			var tolerance = 0.005;
 			if (_this.engineeringLayer.tolerance) {
 				tolerance = _this.engineeringLayer.tolerance;
 			}
 			array.forEach(fieldNames, function (fieldName) {
 				var matchId;
-				matchId = array.indexOf(latFieldStrings, fieldName.toLowerCase());
+				matchId = array.indexOf(fromLatFieldStrings, fieldName.toLowerCase());
 				if (matchId !== -1) {
-					_this.latField = latField = fieldName;
+					_this.fromLatField = fromLatField = fieldName;
 				}
 
-				matchId = array.indexOf(longFieldStrings, fieldName.toLowerCase());
+				matchId = array.indexOf(fromLongFieldStrings, fieldName.toLowerCase());
 				if (matchId !== -1) {
-					_this.longField = longField = fieldName;
+					_this.fromLongField = fromLongField = fieldName;
+				}
+				matchId = array.indexOf(toLatFieldStrings, fieldName.toLowerCase());
+				if (matchId !== -1) {
+					_this.toLatField = toLatField = fieldName;
+				}
+
+				matchId = array.indexOf(toLongFieldStrings, fieldName.toLowerCase());
+				if (matchId !== -1) {
+					_this.toLongField = toLongField = fieldName;
 				}
 			});
-			var locations = new Array();
-			if(!_this.latField || !_this.longField){
+			if (!_this.fromLatField || !_this.fromLongField || !_this.toLatField || !_this.toLongField) {
 				new Message({
-						message: _this.nls.fileMissingFields
-					});
-					return null;
+					message: _this.nls.fileMissingFields
+				});
+				return null;
 			}
+			var locations = new Array();
 			array.forEach(layer.graphics, function (feature) {
 
-				var latitude = parseFloat(feature.attributes[latField]);
-				var longitude = parseFloat(feature.attributes[longField]);
+				var fromLatitude = parseFloat(feature.attributes[fromLatField]);
+				var fromLongitude = parseFloat(feature.attributes[fromLongField]);
+				var toLatitude = parseFloat(feature.attributes[toLatField]);
+				var toLongitude = parseFloat(feature.attributes[toLongField]);
 
 				var geometryLocation = {
 					'geometry': {
-						'x': longitude,
-						'y': latitude
+						'x': fromLongitude,
+						'y': fromLatitude
+					}
+				};
+				locations.push(geometryLocation);
+
+				var geometryLocation = {
+					'geometry': {
+						'x': toLongitude,
+						'y': toLatitude
 					}
 				};
 				locations.push(geometryLocation);
@@ -570,11 +612,11 @@ define(['dojo/_base/declare',
 			var locations = response.locations;
 			if (locations.length > 0) {
 				var validLocations = array.filter(locations, function (location) {
-						return location.status !== "esriLocatingCannotFindLocation";
+						return location.status !== "esriLocatingCannotFindExtent";
 					});
 
 				var notFoundLocations = array.filter(locations, function (location) {
-						return location.status === "esriLocatingCannotFindLocation";
+						return location.status === "esriLocatingCannotFindExtent";
 					});
 
 				var singleLocations = array.filter(locations, function (location) {
@@ -582,7 +624,7 @@ define(['dojo/_base/declare',
 					});
 
 				var multipleLocations = array.filter(locations, function (location) {
-						return location.status === "esriLocatingMultipleLocation";
+						return location.status === "esriLocatingFromPartialMatch" || location.status === "esriLocatingToPartialMatch";
 					});
 
 				return {
@@ -616,7 +658,7 @@ define(['dojo/_base/declare',
 					var locationInfos = params._this._checkAmbiguousLocations(response);
 					if (locationInfos) {
 						if (locationInfos.multipleLocations) {}
-						//lang.mixin(response,{locations:locationInfos.singleLocations});
+						//lang.mixin(response,{locations:locationInfos.validLocations});
 						if (params.engineeringLayer.translate && params.engineeringLayer.targetNetworkLayerIds) {
 							params._getCumulativeMeasure(response, params.items, params.locations);
 						} else {
@@ -628,11 +670,13 @@ define(['dojo/_base/declare',
 					//params.status.innerHTML = '<br/>Error fetching measures for locations. Details:' + error.message;
 					console.error("Error fetching route measures for locations: ", error);
 					this.routeField = null;
-					this.measureField = null;
 					this.lineNameField = null;
-					this.latField = null;
-					this.longField = null;
-					this.longField = null;
+					this.fromMeasureField = null;
+					this.toMeasureField = null;
+					this.fromLatField = null;
+					this.fromLongField = null;
+					this.toLatField = null;
+					this.toLongField = null;
 					new Message({
 						message: params._this.nls.fileMissingFields
 					});
@@ -664,10 +708,13 @@ define(['dojo/_base/declare',
 					//params.status.innerHTML = '<br/>Error fetching measures for locations. Details:' + error.message;
 					console.error("Error fetching route measures for locations: ", error);
 					this.routeField = null;
-					this.measureField = null;
 					this.lineNameField = null;
-					this.latField = null;
-					this.longField = null;
+					this.fromMeasureField = null;
+					this.toMeasureField = null;
+					this.fromLatField = null;
+					this.fromLongField = null;
+					this.toLatField = null;
+					this.toLongField = null;
 					new Message({
 						message: params._this.nls.fileMissingFields
 					});
@@ -679,34 +726,42 @@ define(['dojo/_base/declare',
 		_getCumulativeMeasure: function (response, items, locations) {
 			var locationParams = [];
 			var locs = response.locations;
-			if (this.routeMeasureRadio.checked) {
-				array.forEach(locs, function (item) {
-					var result = item;
-					if (item.geometry && item.geometry.m) {
-						result.measure = item.geometry.m;
-					} else {
-						result.measure = 0;
-					}
-					if (result) {
-						locationParams.push({
-							routeId: result.routeId,
-							measure: result.measure
-						});
-					}
-				});
-			} else {
-				array.forEach(locs, function (item) {
-					var results = item.results;
-					array.forEach(results, function (result) {
-						if (result) {
-							locationParams.push({
-								routeId: result.routeId,
-								measure: result.measure
-							});
-						}
+			//if (this.baseDndClass.routeMeasureRadio.checked) {
+			array.forEach(locs, function (item) {
+				var result = item;
+				if (item.geometry && item.geometry.hasM) {
+					var geom = item.geometry;
+					var firstPoint = geom.paths[0][0]
+						var lastPartIdx = geom.paths.length - 1;
+					var lastPntIdx = geom.paths[lastPartIdx].length - 1;
+					var lastPnt = geom.paths[lastPartIdx][lastPntIdx];
+					result.fromMeasure = firstPoint[firstPoint.length - 1];
+					result.toMeasure = lastPnt[lastPnt.length - 1];
+				} else {
+					result.fromMeasure = 0;
+					result.toMeasure = 0;
+				}
+				if (result) {
+					locationParams.push({
+						routeId: result.routeId,
+						fromMeasure: result.fromMeasure,
+						toMeasure: result.toMeasure
 					});
-				});
+				}
+			});
+			/*} else {
+			array.forEach(locs, function (item) {
+			var results = item.results;
+			array.forEach(results, function (result) {
+			if (result) {
+			locationParams.push({
+			routeId: result.routeId,
+			measure: result.measure
+			});
 			}
+			});
+			});
+			}*/
 
 			// Set up SOE URL and parameters
 			var serviceURL = this.engineeringLayer.url + this.engineeringLayer.translate;
@@ -755,8 +810,8 @@ define(['dojo/_base/declare',
 			measure,
 			geometry,
 			geometryType,
-			x,
-			y,
+			fromXY,
+			toXY,
 			geometryJson,
 			cMeasure;
 
@@ -767,17 +822,19 @@ define(['dojo/_base/declare',
 				geometryType = responseLocation.geometryType;
 
 				if (responseLocation.geometry) {
-					geometry = (esri.geometry.Point)(responseLocation.geometry);
+					geometry = (esri.geometry.Polyline)(responseLocation.geometry);
 					geometry.setSpatialReference(map.spatialReference);
 					geometryJson = geometry.toJson();
 				}
+				fromMeasure = responseLocation.fromMeasure;
+				toMeasure = responseLocation.toMeasure;
+				attributes[this.nls.dndFields.fromEngStation] = fromMeasure;
+				attributes[this.nls.dndFields.toEngStation] = toMeasure;
 
-				routeId = location.routeId;
-				measure = location.measure
-				attributes[this.nls.dndFields.engStation] = Math.round(measure);
 			} else {
-				if (!isNaN(location.geometry.x) && !isNaN(location.geometry.y)) {
-					geometry = new Point(location.geometry.x, location.geometry.y);
+
+				if (geometry.paths && geoemtry.paths.length > 0) {
+					geometry = new Polyline(location.geometry);
 					geometry = webMercatorUtils.geographicToWebMercator(geometry);
 					geometry.setSpatialReference(map.spatialReference);
 					geometryJson = geometry.toJson();
@@ -786,14 +843,19 @@ define(['dojo/_base/declare',
 				routeId = responseLocation.routeId;
 				measure = responseLocation.measure;
 				attributes[this.nls.dndFields.engStation] = Math.round(measure);
+
 			}
 			var geoGeometry = webMercatorUtils.webMercatorToGeographic(geometry);
-			x = geoGeometry.x;
-			y = geoGeometry.y;
+			var firstPoint = geoGeometry.getPoint(0, 0)
+				var lastPartIdx = geoGeometry.paths.length - 1;
+			var lastPntIdx = geoGeometry.paths[lastPartIdx].length - 1;
+			var lastPnt = geoGeometry.getPoint(lastPartIdx, lastPntIdx);
+			fromXY = "" + firstPoint.x + "," + firstPoint.y + "";
+			toXY = "" + lastPnt.x + "," + lastPnt.y + "";
 
 			var routeNames = array.filter(params.routeNamesMap, function (r) {
-				return r.routeId === routeId;
-			});
+					return r.routeId === routeId;
+				});
 
 			objectId++;
 			var routeName = "";
@@ -801,16 +863,20 @@ define(['dojo/_base/declare',
 				routeName = routeNames[0].routeName;
 			}
 			if (translatedLocation) {
-				cMeasure = Math.round(translatedLocation.measure);
+				//lang.mixin(row,{cMeasure:Math.round(translatedLocation.measure)});
+				cFromMeasure = Math.round(translatedLocation.fromMeasure);
+				cToMeasure = Math.round(translatedLocation.toMeasure);
 			}
-			attributes[this.nls.dndFields.contStation] = cMeasure;
+			attributes[this.nls.dndFields.fromContStation] = cFromMeasure;
+			attributes[this.nls.dndFields.toContStation] = cToMeasure;
 			attributes[this.nls.dndFields.routeName] = routeName;
 
 			var csvItems = array.filter(layer.graphics, function (feature) {
 					if (params.isRouteMeasure) {
 						var csvRouteId = feature.attributes[_this.routeField ? _this.routeField : _this.lineNameField];
-						var msure = feature.attributes[_this.measureField];
-						if (csvRouteId && csvRouteId == (_this.routeField ? routeId : location.lineName) && msure && msure == measure) {
+						var fromMsure = feature.attributes[_this.fromMeasureField];
+						var toMsure = feature.attributes[_this.toMeasureField];
+						if (csvRouteId && csvRouteId == (_this.routeField ? routeId : location.lineName) && fromMsure && fromMsure == location.fromMeasure && toMsure && toMsure == location.toMeasure) {
 							return feature;
 						}
 					} else {
@@ -826,25 +892,32 @@ define(['dojo/_base/declare',
 			lang.mixin(row, attributes);
 			if (params.isRouteMeasure) {
 				lang.mixin(row, {
-					X: x,
-					Y: y
+					FromXY: fromXY,
+					ToXY: toXY
 				});
 				row[this.nls.dndFields.status]= responseLocation.status;
-				row[this.nls.dndFields.routeid]= routeId;
+				row[this.nls.dndFields.routeid] = routeId;
 			} else {
 				row[this.nls.dndFields.status]= responseLocation.status;
-				row[this.nls.dndFields.routeid]= routeId;
+				row[this.nls.dndFields.routeid] = routeId;
 			}
 			if (csvItems && csvItems.length > 0) {
+				if (params.isRouteMeasure) {
+					delete csvItems[0].attributes["frommeasure"];
+					delete csvItems[0].attributes["tomeasure"];
+					delete csvItems[0].attributes["routeid"]
+				}
 				for (var key in csvItems[0].attributes) {
 					attributes[key] = csvItems[0].attributes[key];
 				}
 			}
+			
+			
 			lang.mixin(row, csvItems[0].attributes);
 
 			if (params.isRouteMeasure) {
-				attributes[this.nls.dndFields.lat] = y;
-				attributes[this.nls.dndFields.longt] = x;
+				attributes[this.nls.dndFields.fromLatLong] = "" + firstPoint.y + "," + firstPoint.x + ""; ;
+				attributes[this.nls.dndFields.toLatLong] = "" + lastPnt.x + "," + lastPnt.y + "";
 			}
 			attributes[this.nls.dndFields.lineName] = routeNames[0].lineName;
 
@@ -858,6 +931,7 @@ define(['dojo/_base/declare',
 			params.gridData.push(row);
 
 			return objectId;
+
 		},
 
 		_lookUpRouteNames: function (_this, locations) {
@@ -913,24 +987,22 @@ define(['dojo/_base/declare',
 		showResponse: function (response, layer, locations) {
 			this.map.graphics.clear();
 			var _this = this;
-			var routeMeasureRadio = this.routeMeasureRadio;
+			var routeMeasureRadio = this.baseDndClass.routeMeasureRadio;
 			var objectId = 0;
 			var responseLocations = response.locations;
 			var features = [];
 			var fields;
 			var idx = 0;
-			var table = query(".add-file-pane", this.domNode)[0];
+			var counter = 0;
+			var table = query(".add-file-pane", this.baseDndClass.domNode)[0];
 			if (table) {
 				html.setStyle(table, "display", "none");
 			}
-			html.setStyle(this.gridDiv, "display", "");
+			html.setStyle(this.baseDndClass.gridDiv, "display", "");
 
-			this._lookUpRouteNames(this, routeMeasureRadio.checked ? locations : responseLocations).then(function (routeNamesMap) {
-
-				//var popupInfo = this.generateDefaultPopupInfo(featureCollection);
+			//this._lookUpRouteNames(this, routeMeasureRadio.checked ? locations : responseLocations).then(function (routeNamesMap) {
+			this._lookUpRouteNames(this, locations).then(function (routeNamesMap) {
 				var infoTemplate = new InfoTemplate("Attributes", "${*}"); //new InfoTemplate(this.buildInfoTemplate(popupInfo));
-				//var latField, longField;
-				//    var fieldNames = csvStore.getAttributes(items[0]);
 
 
 				var gridData = [];
@@ -938,115 +1010,116 @@ define(['dojo/_base/declare',
 				if (response.translatedResponse) {
 					translatedLocations = response.translatedResponse.locations;
 				}
-				var counter = 0;
+
 				var skipNotFoundLocs = responseLocations.length >= layer.graphics.length ? true : false;
 				// Add records in this CSV store as graphics
 				array.forEach(responseLocations, function (responseLocation, index) {
 
-					if (!skipNotFoundLocs || (responseLocation.status == "esriLocatingMultipleLocation" || responseLocation.status == "esriLocatingOK")) {
+					if (!skipNotFoundLocs || (responseLocation.status == "esriLocatingFromPartialMatch" || responseLocation.status == "esriLocatingToPartialMatch" || responseLocation.status == "esriLocatingOK") && responseLocation.geometry) {
 
-						if (routeMeasureRadio.checked) {
-							var params = {
-								objectId: objectId,
-								layer: layer,
-								responseLocation: responseLocation,
-								location: locations[index],
-								routeNamesMap: routeNamesMap,
-								isRouteMeasure: routeMeasureRadio.checked,
-								gridData: gridData,
-								features: features,
-								map: _this.map
-							};
-							if (translatedLocations // && routeTranslation.routeId == locationInfo.routeId
-								 && translatedLocations.length > 0) {
+						//if (routeMeasureRadio.checked) {
+						var params = {
+							objectId: objectId,
+							layer: layer,
+							responseLocation: responseLocation,
+							location: locations[index],
+							routeNamesMap: routeNamesMap,
+							isRouteMeasure: true, //routeMeasureRadio.checked,
+							gridData: gridData,
+							features: features,
+							map: _this.map
+						};
+						if (translatedLocations // && routeTranslation.routeId == locationInfo.routeId
+							 && translatedLocations.length > 0) {
 
-								var tLocs = translatedLocations[index].translatedLocations;
+							var tLocs = translatedLocations[index].translatedLocations;
 
-								if (tLocs && tLocs.length == 1) {
-									array.forEach(tLocs, function (tLoc) {
-										lang.mixin(params, {
-											translatedLocation: tLoc,
-											objectId: objectId
-										});
-										objectId = _this._createRow(params, _this);
-									});
-								} else if (tLocs && tLocs.length > 1) {
-									var lineIdObj = array.filter(params.routeNamesMap, function (r) {
-											return r.routeId === params.location.routeId;
-										});
-
-									var filteredtLocs = array.filter(tLocs, function (tLoc) {
-											return tLoc.routeId == lineIdObj[0].lineId;
-										});
+							if (tLocs && tLocs.length == 1) {
+								array.forEach(tLocs, function (tLoc) {
 									lang.mixin(params, {
-										translatedLocation: filteredtLocs[0],
+										translatedLocation: tLoc,
 										objectId: objectId
 									});
 									objectId = _this._createRow(params, _this);
-								} else {
-									lang.mixin(params, {
-										translatedLocation: translatedLocations[index],
-										objectId: objectId
-									});
-									objectId = _this._createRow(params, _this);
-								}
-							}
-							fields = params.fields;
-						} else {
-
-							var locationResults = responseLocation.results;
-							array.forEach(locationResults, function (locationInfo) {
-								//console.log(idx);
-								var tLocs = translatedLocations[idx].translatedLocations;
-
-								lang.mixin(locationInfo, {
-									status: responseLocation.status
 								});
-
-								var params = {
-									objectId: objectId,
-									layer: layer,
-									responseLocation: locationInfo,
-									location: locations[index],
-									routeNamesMap: routeNamesMap,
-									isRouteMeasure: routeMeasureRadio.checked,
-									gridData: gridData,
-									features: features,
-									map: _this.map
-								};
-
-								if (tLocs && tLocs.length == 1) {
-									array.forEach(tLocs, function (tLoc) {
-										lang.mixin(params, {
-											translatedLocation: tLoc,
-											objectId: objectId
-										});
-										objectId = _this._createRow(params, _this);
+							} else if (tLocs && tLocs.length > 1) {
+								var lineIdObj = array.filter(params.routeNamesMap, function (r) {
+										return r.routeId === params.location.routeId;
 									});
-								} else if (tLocs && tLocs.length > 1) {
-									var lineIdObj = array.filter(params.routeNamesMap, function (r) {
-											return r.routeId === locationInfo.routeId;
-										});
 
-									var filteredtLocs = array.filter(tLocs, function (tLoc) {
-											return tLoc.routeId == lineIdObj[0].lineId;
-										});
-									lang.mixin(params, {
-										translatedLocation: filteredtLocs[0],
-										objectId: objectId
+								var filteredtLocs = array.filter(tLocs, function (tLoc) {
+										return tLoc.routeId == lineIdObj[0].lineId;
 									});
-									objectId = _this._createRow(params, _this);
-								} else {
-									objectId = _this._createRow(params, _this);
-								}
-								fields = params.fields;
-								idx++;
-							});
-
+								lang.mixin(params, {
+									translatedLocation: filteredtLocs[0],
+									objectId: objectId
+								});
+								objectId = _this._createRow(params, _this);
+							} else {
+								lang.mixin(params, {
+									translatedLocation: translatedLocations[index],
+									objectId: objectId
+								});
+								objectId = _this._createRow(params, _this);
+							}
 						}
+						fields = params.fields;
+						/*	} else {
+
+						var locationResults = responseLocation.results;
+						array.forEach(locationResults, function (locationInfo) {
+						console.log(idx);
+						var tLocs = translatedLocations[idx].translatedLocations;
+
+						lang.mixin(locationInfo, {
+						status: responseLocation.status
+						});
+
+						var params = {
+						objectId: objectId,
+						layer: layer,
+						responseLocation: locationInfo,
+						location: locations[index],
+						routeNamesMap: routeNamesMap,
+						isRouteMeasure: routeMeasureRadio.checked,
+						gridData: gridData,
+						features: features,
+						map: _this.map
+						};
+
+						if (tLocs && tLocs.length == 1) {
+						array.forEach(tLocs, function (tLoc) {
+						lang.mixin(params, {
+						translatedLocation: tLoc,
+						objectId: objectId
+						});
+						objectId = _this._createRow(params, _this);
+						});
+						} else if (tLocs && tLocs.length > 1) {
+						var lineIdObj = array.filter(params.routeNamesMap, function (r) {
+						return r.routeId === locationInfo.routeId;
+						});
+
+						var filteredtLocs = array.filter(tLocs, function (tLoc) {
+						return tLoc.routeId == lineIdObj[0].lineId;
+						});
+						lang.mixin(params, {
+						translatedLocation: filteredtLocs[0],
+						objectId: objectId
+						});
+						objectId = _this._createRow(params, _this);
+						} else {
+						objectId = _this._createRow(params, _this);
+						}
+						fields = params.fields;
+						idx++;
+						});
+
+						}*/
 					} else {
-						counter++;
+						counter ++;
 					}
+				
 				});
 				if(counter == responseLocations.length){
 					new Message({
@@ -1064,7 +1137,7 @@ define(['dojo/_base/declare',
 							infoTemplate: infoTemplate,
 							id: 'csvLayer' + "-" + Date.now()
 						});
-					_this.featureLayer = featureLayer;
+					_this.baseDndClass.featureLayer = featureLayer;
 					featureLayer.advancedQueryCapabilities = {
 						"supportsPagination": false,
 						"supportsQueryWithDistance": false,
@@ -1092,8 +1165,8 @@ define(['dojo/_base/declare',
 					var store = new ItemFileWriteStore({
 							data: data
 						});
-					_this.grid.setStructure(gridLayout);
-					_this.grid.setStore(store);
+					_this.baseDndClass.grid.setStructure(gridLayout);
+					_this.baseDndClass.grid.setStore(store);
 				}
 			});
 		},
@@ -1104,18 +1177,18 @@ define(['dojo/_base/declare',
 				"layerDefinition": null,
 				"featureSet": {
 					"features": params.features,
-					"geometryType": "esriGeometryPoint"
+					"geometryType": "esriGeometryPolyline"
 				}
 			};
 			featureCollection.layerDefinition = {
-				"geometryType": "esriGeometryPoint",
+				"geometryType": "esriGeometryPolyline",
 				"objectIdField": "__OBJECTID",
 				"type": "Feature Layer",
 				"typeIdField": "",
 				"drawingInfo": {
 					"renderer": {
 						"type": "simple",
-						"symbol": jsonUtils.fromJson(this.config.csvLayerSymbol)
+						"symbol": jsonUtils.fromJson(this.config.measureToGeometryLineSymbol)
 					}
 				},
 				"fields": [{
@@ -1295,40 +1368,6 @@ define(['dojo/_base/declare',
 			return json;
 		},
 
-		clearAll: function () {
-			var table = query(".add-file-pane", this.domNode)[0];
-			if (table) {
-				html.setStyle(table, "display", "");
-			}
-			html.setStyle(this.gridDiv, "display", "none");
-			this.routeField = null;
-			this.measureField = null;
-			this.lineNameField = null;
-			this.latField = null;
-			this.longField = null;
-			this.dndLine.routeField = null;
-			this.dndLine.lineNameField = null;
-			this.dndLine.fromMeasureField = null;
-			this.dndLine.toMeasureField = null;
-			this.dndLine.fromLatField = null;
-			this.dndLine.fromLongField= null;
-			this.dndLine.toLatField= null;
-			this.dndLine.toLongField= null;
-			this.map.infoWindow.hide();
-			this.map.graphics.clear();
-			this.grid.setStore(null);
-			var layerIds = this.map.graphicsLayerIds.slice(0);
-			layerIds = layerIds.concat(this.map.layerIds.slice(1));
-			var csvLayer = this.featureLayer; //this.map.getLayer('csvLayer');
-			if (csvLayer) {
-				this.map.removeLayer(csvLayer);
-			}
-			this.featureLayer = null;
-			/*array.forEach(layerIds, lang.hitch(this,function(layerId) {
-			this.map.removeLayer(this.map.getLayer(layerId));
-			}));*/
-		},
-
 		onLayerInfosChanged: function (layerInfo, changeType, layerInfoSelf) {
 			if (!layerInfoSelf || !layerInfo) {
 				return;
@@ -1359,175 +1398,25 @@ define(['dojo/_base/declare',
 		},
 
 		exportCsv: function () {
-			if(this.featureLayer){
-				var str = this.getExportString();
-				this.download("features.csv", str);
-			}
+			var featureSet = this._getFeatureSet(this.featureLayer);
+			this.featureActionManager.getSupportedActions(featureSet, this.featureLayer).then(lang.hitch(this, function (actions) {
+					array.forEach(actions, lang.hitch(this, function (action) {
+							action.data = featureSet;
+						}));
+
+					actions = array.filter(actions, lang.hitch(this, function (action) {
+								return action.label === 'Export to CSV file';
+							}))[0];
+					if (actions) {
+						var layer;
+						if (actions.data.features && actions.data.features.length > 0) {
+							layer = actions.data.features[0].getLayer();
+						}
+						actions.onExecute(actions.data, layer);
+					}
+				}));
+
 		},
-		
-		getExportString: function(){
-      	var featureSet = this._getFeatureSet(this.featureLayer);
-          var str = '';
-          if(featureSet){
-            str = this._createCSVFromFeatureSet(featureSet);
-          }
-          return str;
-      },
-	  
-      _createCSVFromFeatureSet: function(featureSet){
-        var fields = this._generateFields(featureSet);
-
-        var datas = array.map(featureSet.features, function(feature){
-          var attributes = lang.clone(feature.attributes);
-          return attributes;
-        });
-
-        return this.createCSVString(fields, datas);
-      },
-	  
-	  _generateFields: function(featureSet) {
-        var feature = featureSet.features[0];
-        var fields, item, layerId;
-
-        if(feature._layer) {
-          fields = feature._layer.fields;
-          layerId = feature._layer.id;
-        }
-
-        fields = lang.clone(fields || featureSet.fields);
-        if(!fields || fields.length === 0){
-          fields = [];
-          var attributes = feature.attributes;
-          for(item in attributes){
-            if(attributes.hasOwnProperty(item)){
-              fields.push({
-                name: item
-              });
-            }
-          }
-        }
-
-        var layerInfos = LayerInfos.getInstanceSync();
-        var layerInfo = layerInfos.getLayerInfoById(layerId);
-        if (layerInfo) {
-          var popupInfo = layerInfo.getPopupInfo();
-          if (!popupInfo) {
-            // Try another way to get popupInfo
-            popupInfo = layerInfo.layerObject.infoTemplate && layerInfo.layerObject.infoTemplate.info;
-          }
-          array.forEach(fields, lang.hitch(this, function(field) {
-            field.fieldInfo = this._findFieldInfo(popupInfo, field.name);
-          }));
-        }
-
-        if(featureSet.fieldAliases){
-          //Set of name-value pairs for the attribute's field and alias names.
-          array.forEach(fields, function(field) {
-            if (featureSet.fieldAliases[field.name]) {
-              field.alias = featureSet.fieldAliases[field.name];
-            }
-          });
-        }
-       
-        return fields;
-      },
-
-      _findFieldInfo: function(popupInfo, fieldName) {
-        if (!popupInfo) {
-          return null;
-        }
-        var fieldInfo;
-        array.some(popupInfo.fieldInfos, function(info) {
-          if (info.fieldName === fieldName) {
-            fieldInfo = info;
-            return true;
-          }
-        });
-        return fieldInfo;
-      },
-	  
-	  
-	   /*************
-    datas: Object[], Object properties depend on fields' name
-    fields: String[] | Object[]
-      String[]: field name array,
-      Object[]: Object is the same with layer definition
-        {
-          name:
-          type:
-          alias:
-        }
-    **************/
-     createCSVString:function(fields, datas){
-      var textField = '"';
-      var content = '';
-      var len = datas.length,
-        n = fields.length,
-        comma = '',
-        value = '',
-        feature;
-      try {
-        array.forEach(fields, function(_field) {
-          if(typeof _field === 'string'){
-            content = content + comma + _field;
-          }else{
-            content = content + comma + (_field.alias || _field.name);
-          }
-
-          comma = ',';
-        });
-
-        content = content + '\r\n';
-
-        for (var i = 0; i < len; i++) {
-          comma = '';
-          feature = datas[i];
-          for (var m = 0; m < n; m++) {
-            var _field = fields[m];
-            value = feature[typeof _field === 'string'? _field: _field.name];
-            if (!value && typeof value !== 'number') {
-              value = '';
-            }
-            if (value) {
-              if(_field.type === 'esriFieldTypeDate'){
-                value = jimuUtils.localizeDateByFieldInfo(value, _field.fieldInfo);
-              }else if(_field.fieldInfo &&
-                (_field.type === 'esriFieldTypeDouble' ||
-                _field.type === 'esriFieldTypeSingle' ||
-                _field.type === 'esriFieldTypeInteger' ||
-                _field.type === 'esriFieldTypeSmallInteger')) {
-                value = jimuUtils.localizeNumberByFieldInfo(value, _field.fieldInfo);
-              }
-            }
-
-            if (value && /[",\r\n]/g.test(value)) {
-              value = textField + value.replace(/(")/g, '""') + textField;
-            }
-            content = content + comma + value;
-            comma = ',';
-          }
-          content = content + '\r\n';
-        }
-        return content;
-      } catch (err) {
-        return '';
-      }
-    },
-
-     download:function(filename, text) {
-      if (dojo.isIE < 10) {
-        saveTextAs(text, filename, 'utf-8');
-      }else{
-        var blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
-        // Use saveAs(blob, name, true) to turn off the auto-BOM stuff
-        saveAs(blob, filename, true);
-      }
-    },
-
-	  
-	  
-   
-
 
 		getSeparator: function (string) {
 			var separators = [",", "      ", ";", "|"];
@@ -1545,26 +1434,25 @@ define(['dojo/_base/declare',
 
 		zoomToData: function (featureLayer) {
 			// Zoom to the collective extent of the data
-			var multipoint = new Multipoint(this.map.spatialReference);
+			/*var multipoint = new Multipoint(this.map.spatialReference);
 			array.forEach(featureLayer.graphics, function (graphic) {
-				var geometry = graphic.geometry;
-				if (geometry) {
-					multipoint.addPoint({
-						x: geometry.x,
-						y: geometry.y
-					});
-				}
+			var geometry = graphic.geometry;
+			if (geometry) {
+			multipoint.addPoint({
+			x: geometry.x,
+			y: geometry.y
 			});
-
-			if (multipoint.points.length > 0) {
-				this.map.setExtent(multipoint.getExtent().expand(1.25), true);
 			}
+			});*/
+
+			this.map.setExtent(graphicsUtils.graphicsExtent(featureLayer.graphics).expand(1.25), true);
+
 		},
 
 		//File upload for older browsers
 		uploadFile: function (files) {
 			if (files && files.length === 1) {
-				//console.log("handle files");
+				console.log("handle files");
 				this.handleCsv(files[0]);
 			} else {
 				this.status.innerHTML = "Uploading...";
@@ -1585,37 +1473,7 @@ define(['dojo/_base/declare',
 		requestFailed: function (error) {
 			this.status.innerHTML = 'Unable to upload' + error.message;
 			console.log(error);
-		},
-
-		//Zoom to the location when the user clicks a row
-		onRowClickHandler: function (evt) {
-			this.map.graphics.clear();
-			this.map.infoWindow.hide();
-			var _this = this;
-			var query = new Query();
-			query.objectIds = this.grid.getItem(evt.rowIndex).__OBJECTID;
-			featureLayer.selectFeatures(query, FeatureLayer.SELECTION_NEW, function (features) {
-				//zoom to the selected feature
-				if (features.length == 0 || features[0].geometry == null)
-					return;
-				if (_this.geometryType.value == "point") {
-					var geometry = ((Point)(features[0].geometry));
-					_this.map.setExtent(_this.pointToExtent(_this.map, geometry, 200));
-					_this.map.infoWindow.setFeatures(features);
-					_this.map.infoWindow.show(geometry);
-				} else {
-					var geometry = ((Polyline)(features[0].geometry));
-					_this.map.setExtent(geometry.getExtent().expand(1.5));
-					_this.map.infoWindow.setFeatures(features);
-					_this.map.infoWindow.show(geometry.getExtent().getCenter());
-				}
-			});
-		},
-
-		pointToExtent: function (map, point, toleranceInPixel) {
-			var pixelWidth = map.extent.getWidth() / map.width;
-			var toleraceInMapCoords = toleranceInPixel * pixelWidth;
-			return new Extent(point.x - toleraceInMapCoords, point.y - toleraceInMapCoords, point.x + toleraceInMapCoords, point.y + toleraceInMapCoords, map.spatialReference);
 		}
+
 	});
 });

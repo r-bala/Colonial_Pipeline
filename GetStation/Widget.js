@@ -23,6 +23,7 @@ define(['dojo/_base/declare',
 		"dijit/layout/TabContainer",
 		"dijit/layout/ContentPane",
 		"dijit/form/ValidationTextBox",
+		"dijit/form/NumberTextBox",
 		"esri/toolbars/draw",
 		"esri/geometry/Extent",
 		"esri/geometry/Point",
@@ -34,6 +35,7 @@ define(['dojo/_base/declare',
 		'esri/symbols/SimpleFillSymbol',
 		'esri/symbols/SimpleLineSymbol',
 		'esri/symbols/SimpleMarkerSymbol',
+		"esri/symbols/jsonUtils",
 		'esri/undoManager',
 		"esri/renderers/Renderer",
 		"dojo/data/ItemFileReadStore",
@@ -89,6 +91,7 @@ define(['dojo/_base/declare',
 		TabContainer,
 		ContentPane,
 		ValidationTextBox,
+		NumberTextBox,
 		Draw,
 		Extent,
 		Point,
@@ -100,6 +103,7 @@ define(['dojo/_base/declare',
 		SimpleFillSymbol,
 		SimpleLineSymbol,
 		SimpleMarkerSymbol,
+		jsonUtils,
 		UndoManager,
 		Renderer,
 		ItemFileReadStore, dom, domConstruct, json, parser, BorderContainer,
@@ -118,43 +122,26 @@ define(['dojo/_base/declare',
 			layerIdPrefix: "__snap_",
 			_managedLayers: null, // array of FeatureLayer
 			_layerIdCounter: 0, // for generating unique layer IDs
+			_snapManager:null,
 
 			postCreate: function () {
 				this.inherited(arguments);
 				console.log('postCreate');
 				if (this.config.enableSnapping) {
-					var engineeringLayer;
-					LayerInfos.getInstance(this.map, this.map.itemInfo).then(lang.hitch(this, function (layerInfosObj) {
-							this.layerInfosObj = layerInfosObj;
-							var layers = this.layerInfosObj.getLayerInfoArray();
-							//					console.log(layers);
-
-							array.forEach(layers, lang.hitch(this, function (layer) {
-									var subLayers = layer.newSubLayers;
-									if (subLayers && subLayers.length > 0) {
-										array.forEach(subLayers, lang.hitch(this, function (lyr) {
-												if (lyr.title.toUpperCase().indexOf("ENGINEERING") >= 0) {
-													engineeringLayer = lyr.layerObject;
-												}
-											}));
-									} else if (layer.layerObject._name.toUpperCase().indexOf("ENGINEERING") >= 0) {
-										engineeringLayer = layer.layerObject;
-									}
-								}));
-							featureLayer = this._createFeatureLayer(engineeringLayer.url);
-							this.map.addLayer(featureLayer)
-							var snapManager = this.map.enableSnapping({
-									alwaysSnap: true,
-									tolerance: this.config.snapTolerance
-								});
-							if (featureLayer) {
-								var layerInfos = [{
-										layer: featureLayer
-									}
-								];
-								snapManager.setLayerInfos(layerInfos);
+					var featureLayer = this._createFeatureLayer(this.config.snappingLayerUrl);
+					this.map.addLayer(featureLayer)
+					this._snapManager = this.map.enableSnapping({
+							alwaysSnap: true,
+							snapPointSymbol: jsonUtils.fromJson(this.config.snapSymbol),
+							tolerance: this.config.snapTolerance
+						});
+					if (featureLayer) {
+						var layerInfos = [{
+								layer: featureLayer
 							}
-						}));
+						];
+						this._snapManager.setLayerInfos(layerInfos);
+					}
 				}
 				this._initUI();
 			},
@@ -251,12 +238,12 @@ define(['dojo/_base/declare',
 				this.searchWidget = new Search({
 						map: this.map,
 						sources: [{
-								featureLayer: new FeatureLayer(this.engineeringLayer.queryUrl),
-								searchFields: [this.engineeringLayer.queryField],
+								featureLayer: new FeatureLayer(this.continuousLayer.queryUrl),
+								searchFields: [this.continuousLayer.queryField],
 								exactMatch: false,
 								placeholder: this.nls.primaryPlaceholder,
-								outFields: [this.engineeringLayer.queryField],
-								name: this.engineeringLayer.primaryName,
+								outFields: [this.continuousLayer.queryField],
+								name: this.continuousLayer.primaryName,
 								popupEnabled: false,
 								popupOpenOnSelect: false,
 								minSuggestCharacters: 1,
@@ -266,7 +253,7 @@ define(['dojo/_base/declare',
 								maxResults: 10,
 								maxSuggestions: 15,
 								enableButtonMode: false,
-								suggestionTemplate: this.engineeringLayer.primarysuggestionTemplate,
+								suggestionTemplate: this.continuousLayer.primarysuggestionTemplate,
 								searchQueryParams: {
 									returnGeometry: false,
 									returnZ: false
@@ -278,7 +265,7 @@ define(['dojo/_base/declare',
 				this.own(on(this.searchWidget, 'select-result', lang.hitch(this, function (e) {
 							console.log('selected result', e);
 							if (e.result && e.result.feature) {
-								this.searchWidget.set("value", e.result.feature.attributes[this.engineeringLayer.queryField]);
+								this.searchWidget.set("value", e.result.feature.attributes[this.continuousLayer.queryField]);
 							}
 						})));
 
@@ -304,7 +291,7 @@ define(['dojo/_base/declare',
 						xyTable: this.xyTable,
 						lineName: this.searchWidget, //this.lineName,
 						contRadio: this.contRadio,
-						mileRadio: this.mileRadio, 
+						mileRadio: this.mileRadio,
 						beginMeasure: this.beginMeasure,
 						endMeasure: this.endMeasure,
 						resultsdiv: this.resultsdiv,
@@ -355,18 +342,22 @@ define(['dojo/_base/declare',
 					}
 				});
 				this.own(on(this.multiClick, "change", function () {
-						if (_this.multiClick.checked) {
+					    if (_this.multiClick.checked) {
 							_this.btnUndo.setDisabled(false);
 							_this.btnRedo.setDisabled(false);
 							_this.measureBtn.setDisabled(false);
+							html.removeClass(_this.btnAddXYField, 'disable');
 						} else {
 							_this.btnUndo.setDisabled(true);
 							_this.btnRedo.setDisabled(true);
 							_this.measureBtn.setDisabled(true);
+							html.addClass(_this.btnAddXYField, 'disable');
 						}
 						_this.map.graphics.clear();
 						_this.map.infoWindow.hide();
 						measureTask.setMultiClickValue(_this.multiClick.checked);
+						_this.disableWebMapPopup();
+						_this.toolbar.activate(Draw.POINT);
 					}));
 				this.own(on(this.inputDraw, "click", lang.hitch(this, this._toggleDraw)));
 
@@ -474,61 +465,7 @@ define(['dojo/_base/declare',
 					}
 				}
 			},
-			/*
-			_clearGeomToMeasure: function(){
-			this.x.set("value", "");
-			this.y.set("value", "");
-			var gl = this.map.getLayer("Geometry to Stationing Result");
-			if(gl){
-			gl.clear();
-			}
-			this.map.graphics.clear();
-			this.map.infoWindow.hide();
-			},
-
-			_clearMeasureToGeom: function(){
-			this.lineName.set("value", "");
-			this.engRadio.checked = true;
-			this.contRadio.checked = false;
-			this.beginMeasure.set("value", "");
-			this.endMeasure.set("value", "");
-			var gl = this.map.getLayer("Geometry to Stationing Result");
-			if(gl){
-			gl.clear();
-			}
-			this.map.graphics.clear();
-			this.map.infoWindow.hide();
-			},
-
-			_toggleDraw: function() {
-			if (!this.drawActive) {
-			this.disableWebMapPopup();
-			this.toolbar.activate(Draw.POINT);
-			this.drawActive = true;
-			this.inputDraw.style
-			domStyle.set(this.inputDraw, "background-color", "#c0daf4");
-			this.x.set("value", "");
-			this.y.set("value", "");
-			} else {
-			this.enableWebMapPopup();
-			this.toolbar.deactivate();
-			this.drawActive = false;
-			domStyle.set(this.inputDraw, "background-color", "");
-			this.map.graphics.clear();
-			//this.map.infoWindow.hide();
-			}
-			},
-
-			_activeDraw: function() {
-			this.disableWebMapPopup();
-			this.toolbar.activate(Draw.POINT);
-			this.drawActive = true;
-			this.inputDraw.style
-			domStyle.set(this.inputDraw, "background-color", "#c0daf4");
-			this.x.set("value", "");
-			this.y.set("value", "");
-			}, */
-
+		
 			_clearGeomToMeasure: function () {
 				this.btnUndo.setDisabled(true);
 				this.btnRedo.setDisabled(true);
@@ -546,6 +483,7 @@ define(['dojo/_base/declare',
 				this.map.graphics.clear();
 				this.map.infoWindow.hide();
 				this._measureTask.clearInputs();
+				this._deactivateDrawKeepMeasure();
 			},
 
 			_clearMeasureToGeom: function () {
@@ -618,6 +556,7 @@ define(['dojo/_base/declare',
 				if (table) {
 					html.setStyle(table, "display", "");
 				}
+
 				var result = this.xyTable.addRow({});
 				if (result.success && result.tr) {
 					var tr = result.tr;
@@ -628,22 +567,41 @@ define(['dojo/_base/declare',
 			_addXYFields: function (tr) {
 				var xtd = query('.simple-table-cell', tr)[0];
 				html.setStyle(xtd, "verticalAlign", "middle");
-				var x = new ValidationTextBox({
+				var x, y;
+				
+				if(this.config.boundaryValues){
+					x = new NumberTextBox({
+						constraints:{min:this.config.boundaryValues.xmin,max:this.config.boundaryValues.xmax,places:8},
+						invalidMessage: this.nls.invalidLatitudeValue,
+						placeHolder: this.nls.xHint,
+						rangeMessage: this.nls.invalidRange + this.config.boundaryValues.xmin + " and " + this.config.boundaryValues.xmax
+
+					});
+					y = new NumberTextBox({
+						constraints:{min:this.config.boundaryValues.ymin,max:this.config.boundaryValues.ymax,places:8},
+						invalidMessage: this.nls.invalidLongitudeValue,
+						placeHolder: this.nls.yHint,
+						rangeMessage: this.nls.invalidRange + this.config.boundaryValues.ymin + " and " + this.config.boundaryValues.ymax
+					});
+				} else {
+					x = new ValidationTextBox({
 						regExp: "^-?\\d*\\.?\\d+([eE][+-]?\\d+)?$",
 						invalidMessage: this.nls.invalidLatitudeValue,
 						placeHolder: this.nls.xHint
 
 					});
+					y = new ValidationTextBox({
+						regExp: "^-?\\d*\\.?\\d+([eE][+-]?\\d+)?$",
+						invalidMessage: this.nls.invalidLongitudeValue,
+						placeHolder: this.nls.yHint
+					});
+				}
 				x.startup();
 				x.placeAt(xtd);
 
 				var ytd = query('.simple-table-cell', tr)[1];
 				html.setStyle(ytd, "verticalAlign", "middle");
-				var y = new ValidationTextBox({
-						regExp: "^-?\\d*\\.?\\d+([eE][+-]?\\d+)?$",
-						invalidMessage: this.nls.invalidLongitudeValue,
-						placeHolder: this.nls.yHint
-					});
+				
 				y.startup();
 				y.placeAt(ytd);
 
@@ -689,16 +647,43 @@ define(['dojo/_base/declare',
 				var csvString = "";
 
 				// build the header
-				var fields = ["Lat", "Long", "Status", "LineName", "Station", "ContStation", "Location", "Result"];
+				var fields = [{
+									fieldName:"Location",
+									fieldAlias:"Location"
+							   },{
+									fieldName:"Result",
+									fieldAlias:"Result"
+							    },{
+									fieldName:"Status", 
+									fieldAlias:"Status"
+							    },{
+									fieldName:"LineName", 
+									fieldAlias:this.nls.lineNameLabel.replace(" : ","")
+							    },{
+									fieldName:"Lat",
+									fieldAlias:this.nls.latitudeLabel.replace(" : ","")
+							    },{
+									fieldName:"Long",
+									fieldAlias:this.nls.longitudeLabel.replace(" : ","")
+							    },{
+									fieldName:"Station", 
+									fieldAlias:this.nls.engineeringStationLabel.replace(" : ","")
+							    },{
+									fieldName:"ContStation",
+									fieldAlias:this.nls.continuousStationLabel.replace(" : ","")
+							    }];
 				if (this.config.showMilePost) {
-					fields.push("MilePost")
+					fields.push({
+									fieldName:"MilePost",
+									fieldAlias:this.nls.milePostLabel.replace(" : ","")
+							    })
 				}
 				var n_fields = fields.length;
 				var lyr_fields_vals = infos;
 				var tableCols = fields;
 
 				for (var i = 0; i < n_fields; i++) {
-					csvString += (csvString.length == 0 ? "" : ",") + '"' + fields[i] + '"';
+					csvString += (csvString.length == 0 ? "" : ",") + '"' + fields[i].fieldAlias + '"';
 				}
 				csvString += "\r\n";
 
@@ -707,7 +692,7 @@ define(['dojo/_base/declare',
 				array.forEach(infos, function (info) {
 					var csvRow = "";
 					array.forEach(fields, function (field, index) {
-						var val = typeof(info[field]) !== "undefined" ? info[field] : "";
+						var val = typeof(info[field.fieldName]) !== "undefined" ? info[field.fieldName] : "";
 						csvRow += (csvRow.length == 0 ? "" : ",") + '"' + val + '"';
 					});
 					csvString += csvRow + "\r\n";
@@ -727,14 +712,102 @@ define(['dojo/_base/declare',
 
 				// build the header
 				var fields;
+				var beginMeasure = this.beginMeasure.value;
 				var endMeasure = this.endMeasure.value;
 				if (endMeasure && endMeasure.replace(/\s/g, "") != "") {
-					fields = ["Name", "FromStation", "ToStation", "FromConstStation", "ToConstStation", "FromLatLong", "ToLatLong"];
+					fields = [{
+									fieldName:"Name", 
+									fieldAlias:this.nls.lineNameLabel.replace(" : ","")
+							    },{
+									fieldName:"FromStation",
+									fieldAlias:this.nls.fromEngineeringStationLabel.replace(" : ","")
+							    },{
+									fieldName:"ToStation",
+									fieldAlias:this.nls.toEngineeringStationLabel.replace(" : ","")
+							    },{
+									fieldName:"FromConstStation", 
+									fieldAlias:this.nls.fromContinuousStationLabel.replace(" : ","")
+							    },{
+									fieldName:"ToConstStation",
+									fieldAlias:this.nls.toContinuousStationLabel.replace(" : ","")
+							    }];
+					if (this.config.showMilePost) {
+						fields.push({
+									fieldName:"FromMilePost",
+									fieldAlias:this.nls.fromMilePostLabel.replace(" : ","")
+							    });
+						fields.push({
+									fieldName:"ToMilePost",
+									fieldAlias:this.nls.toMilePostLabel.replace(" : ","")
+							    });
+					}
+					fields.push({
+									fieldName:"FromLatLong", 
+									fieldAlias:this.nls.fromLatLongLabel.replace(" : ","")
+							    },{
+									fieldName:"ToLatLong",
+									fieldAlias:this.nls.toLatLongLabel.replace(" : ","")
+							    });
+				} else if (beginMeasure && beginMeasure.replace(/\s/g, "") != "") {
+					fields = [{
+									fieldName:"Name", 
+									fieldAlias:this.nls.lineNameLabel.replace(" : ","")
+							    },{
+									fieldName:"Station", 
+									fieldAlias:this.nls.engineeringStationLabel.replace(" : ","")
+							    },{
+									fieldName:"ConstStation",
+									fieldAlias:this.nls.continuousStationLabel.replace(" : ","")
+							    }];
+					if (this.config.showMilePost) {
+						fields.push({
+									fieldName:"MilePost",
+									fieldAlias:this.nls.milePostLabel.replace(" : ","")
+							    })
+					}
+					fields.push({
+									fieldName:"Lat",
+									fieldAlias:this.nls.latitudeLabel.replace(" : ","")
+							    },{
+									fieldName:"Long",
+									fieldAlias:this.nls.longitudeLabel.replace(" : ","")
+							    }
+					);
 				} else {
-					fields = ["Name", "Station", "ConstStation", "Lat", "Long"];
-				}
-				if (this.config.showMilePost) {
-					fields.push("MilePost")
+					fields = [{
+									fieldName:"Name", 
+									fieldAlias:this.nls.lineNameLabel.replace(" : ","")
+							    },{
+									fieldName:"FromStation",
+									fieldAlias:this.nls.fromEngineeringStationLabel.replace(" : ","")
+							    },{
+									fieldName:"ToStation",
+									fieldAlias:this.nls.toEngineeringStationLabel.replace(" : ","")
+							    },{
+									fieldName:"FromConstStation", 
+									fieldAlias:this.nls.fromContinuousStationLabel.replace(" : ","")
+							    },{
+									fieldName:"ToConstStation",
+									fieldAlias:this.nls.toContinuousStationLabel.replace(" : ","")
+							    }];
+					if (this.config.showMilePost) {
+						fields.push({
+									fieldName:"FromMilePost",
+									fieldAlias:this.nls.fromMilePostLabel.replace(" : ","")
+							    });
+						fields.push({
+									fieldName:"ToMilePost",
+									fieldAlias:this.nls.toMilePostLabel.replace(" : ","")
+							    });
+					}
+					fields.push({
+									fieldName:"FromLatLong", 
+									fieldAlias:this.nls.fromLatLongLabel.replace(" : ","")
+							    },{
+									fieldName:"ToLatLong",
+									fieldAlias:this.nls.toLatLongLabel.replace(" : ","")
+							    }
+					);
 				}
 
 				var n_fields = fields.length;
@@ -742,7 +815,7 @@ define(['dojo/_base/declare',
 				var tableCols = fields;
 
 				for (var i = 0; i < n_fields; i++) {
-					csvString += (csvString.length == 0 ? "" : ",") + '"' + fields[i] + '"';
+					csvString += (csvString.length == 0 ? "" : ",") + '"' + fields[i].fieldAlias + '"';
 				}
 				csvString += "\r\n";
 
@@ -751,7 +824,7 @@ define(['dojo/_base/declare',
 				array.forEach(infos, function (info) {
 					var csvRow = "";
 					array.forEach(fields, function (field, index) {
-						var val = typeof(info[field]) !== "undefined" ? info[field] : "";
+						var val = typeof(info[field.fieldName]) !== "undefined" ? info[field.fieldName] : "";
 						csvRow += (csvRow.length == 0 ? "" : ",") + '"' + val + '"';
 					});
 					csvString += csvRow + "\r\n";
@@ -777,12 +850,9 @@ define(['dojo/_base/declare',
 
 					oWin.close();
 				} else {
-					var link = domConstruct.create("a", {
-							href: 'data:text/plain;charset=utf-8,' + encodeURIComponent(csvString),
-							download: filename
-						}, this.domNode);
-					link.click();
-					domConstruct.destroy(link);
+					 var blob = new Blob([csvString], {type: 'text/plain;charset=utf-8'});
+					// Use saveAs(blob, name, true) to turn off the auto-BOM stuff
+					saveAs(blob, filename, true);
 				}
 			},
 

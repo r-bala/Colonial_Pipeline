@@ -187,6 +187,8 @@ define([
 			this.config = args.config;
 			this._infoTemplate = new InfoTemplate("Attributes", "${*}");
 			this._pictSymbol = jsonUtils.fromJson(this.config.geomToMeasureSymbol);
+			this.markerSymbol = jsonUtils.fromJson(this.config.csvLayerSymbol);
+			this.textSymbol = jsonUtils.fromJson(this.config.textSymbol);
 			this.btnUndo = args.btnUndo;
 			this.btnRedo = args.btnRedo;
 			this.multiClick = args.multiClick;
@@ -281,11 +283,12 @@ define([
 						this.map.centerAt(union);
 					}
 				} else {
-					if (this.map.__LOD.level < this.zoomScale) {
-						this.map.centerAndZoom(union.getExtent().getCenter(), this.zoomScale);
+					/* if (this.map.__LOD.level < this.zoomScale) {
+					this.map.centerAndZoom(union.getExtent().getCenter(), this.zoomScale);
 					} else {
-						this.map.centerAt(union.getExtent().getCenter());
-					}
+					this.map.centerAt(union.getExtent().getCenter());
+					} */
+					this.map.setExtent(union.getExtent().expand(1.2), true);
 				}
 			}
 		},
@@ -349,18 +352,16 @@ define([
 			var lineName = this.lineName.value;
 			var beginMeasure = this.beginMeasure.value;
 			var endMeasure = this.endMeasure.value;
-			if( this.mileRadio.checked){
-				if(beginMeasure && beginMeasure.replace(/\s/g, "") != ""){
-				beginMeasure = (this.beginMeasure.value *5280).toString();
+			if (this.mileRadio.checked) {
+				if (beginMeasure && beginMeasure.replace(/\s/g, "") != "") {
+					beginMeasure = (this.beginMeasure.value * 5280).toString();
 				}
-				if(endMeasure && endMeasure.replace(/\s/g, "") != ""){
-				endMeasure = (this.endMeasure.value * 5280).toString();
+				if (endMeasure && endMeasure.replace(/\s/g, "") != "") {
+					endMeasure = (this.endMeasure.value * 5280).toString();
 				}
-			} else {
-				
-			}
+			} else {}
 
-			if ((this.contRadio.checked || this.mileRadio.checked)  && beginMeasure && beginMeasure.replace(/\s/g, "") != "") {
+			if ((this.contRadio.checked || this.mileRadio.checked) && beginMeasure && beginMeasure.replace(/\s/g, "") != "") {
 				serviceURL = this.continuousLayer.url + this.continuousLayer.measureToGeometry;
 				queryURL = this.continuousLayer.queryUrl;
 				queryField = this.continuousLayer.queryField;
@@ -415,8 +416,8 @@ define([
 						} else if (beginMeasure && beginMeasure.replace(/\s/g, "") != "") {
 							measureLocation.measure = beginMeasure;
 						} else {
-							measureLocation.fromMeasure = attributes["engfromm"];
-							measureLocation.toMeasure = attributes["engtom"]; ;
+							measureLocation.fromMeasure = attributes["engfromm"] || attributes["ENGFROMM"];
+							measureLocation.toMeasure = attributes["engtom"] || attributes["ENGTOM"];
 						}
 						locations.push(measureLocation);
 					});
@@ -456,8 +457,8 @@ define([
 										locations.push(mLocation);
 									}
 									if (beginMeasure.replace(/\s/g, "") == "" && endMeasure.replace(/\s/g, "") == "") {
-										measureLocation.fromMeasure = attributes["engfromm"];
-										measureLocation.toMeasure = attributes["engtom"];
+										measureLocation.fromMeasure = attributes["engfromm"] || attributes["ENGFROMM"];
+										measureLocation.toMeasure = attributes["engtom"] || attributes["ENGTOM"];
 										locations.push(measureLocation);
 									}
 								});
@@ -574,6 +575,7 @@ define([
 			var routeInfos = response.routeInfos;
 			var showMilePost = this.config.showMilePost;
 			var plusNotation = this.config.plusNotation;
+			var thousandSeparator = this.config.thousandSeparator;
 			array.forEach(locations, function (loc, index) {
 				var routeInfo = routeInfos[loc["routeId"]];
 				lang.mixin(loc, routeInfo);
@@ -661,8 +663,7 @@ define([
 					delete pairLoc[1].translatedLocations;
 					var geometryType = pairLoc[0].geometryType;
 					if (geometryType != "esriGeometryPoint") {
-						geometry = new Polyline(pairLoc[0].geometry);
-						geometry.addPath(pairLoc[1].geometry.paths[0]);
+						pairLoc[0].geometry = geometryEngine.union([new Polyline(pairLoc[0].geometry), new Polyline(pairLoc[1].geometry)]);
 					}
 					delete pairLoc[1].geometry;
 					//Merge location values
@@ -692,74 +693,53 @@ define([
 				var translatedLocations = location.translatedLocations;
 				var endMeasure = this.endMeasure.value;
 				var beginMeasure = this.beginMeasure.value;
+				var milePost = null,
+				fromMilePost = null,
+				toMilePost = null;
 				//content.push("<br/>RouteId: " + routeId);
 				content.push("<tr><td><table class='attrTable' cellpadding='5px' cellspacing='5px'><tbody>");
 				if ((this.contRadio.checked || this.mileRadio.checked) && beginMeasure && beginMeasure.replace(/\s/g, "") != "") {
 					//content.push("<br/>Linename :" +location.linename);
 					content.push("<tr valign='top'><td class='attrName'>" + this.nls.lineNameLabel + "</td><td class='attrValue'>" + this.lineName.value.toUpperCase() + "</td></tr>");
-					csvData.Name = location.routename;
-					var milePost = null,
-					fromMilePost = null,
-					toMilePost = null;
+					csvData.Name = this.lineName.value.toUpperCase();
+
 					if (endMeasure && endMeasure.replace(/\s/g, "") != "") {
 						if (typeof(location.fromMeasure) !== "undefined") {
-							var measure = this._roundNumber(location.fromMeasure, plusNotation);
-							var milePost = number.format(location.fromMeasure / 5280, {
+							var measure = this._roundNumber(location.fromMeasure, plusNotation, thousandSeparator);
+							fromMilePost = number.format(location.fromMeasure / 5280, {
 									places: 2
 								});
+							csvData.FromMilePost = location.fromMeasure / 5280;
+							csvData.FromConstStation = location.fromMeasure;
 							if (plusNotation) {
-								if (showMilePost) {
-									content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromMilePostLabel + "</td><td class='attrValue'>" + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>");
-									csvData.FromMilePost = location.fromMeasure / 5280;
-								}
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromContinuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
-								csvData.FromConstStation = location.fromMeasure;
 							} else {
-								if (showMilePost) {
-									content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromMilePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
-									csvData.FromMilePost = location.fromMeasure / 5280;
-								}
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromContinuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
-								csvData.FromConstStation = location.fromMeasure;
 							}
 						}
 						if (typeof(location.toMeasure) !== "undefined") {
-							measure = this._roundNumber(location.toMeasure, plusNotation);
-							var milePost = number.format(location.toMeasure / 5280, {
+							measure = this._roundNumber(location.toMeasure, plusNotation, thousandSeparator);
+							toMilePost = number.format(location.toMeasure / 5280, {
 									places: 2
 								});
+							csvData.ToMilePost = location.toMeasure / 5280;
+							csvData.ToConstStation = location.toMeasure;
 							if (plusNotation) {
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.toContinuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
-								if (showMilePost) {
-									content.push("<tr valign='top'><td class='attrName'>" + this.nls.toMilePostLabel + "</td><td class='attrValue'>" + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>");
-									csvData.ToMilePost = location.fromMeasure / 5280;
-								}
-								csvData.ToConstStation = location.fromMeasure;
 							} else {
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.toContinuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
-								if (showMilePost) {
-									content.push("<tr valign='top'><td class='attrName'>" + this.nls.toMilePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
-									csvData.ToMilePost = location.toMeasure / 5280;
-								}
-								csvData.ToConstStation = location.toMeasure;
 							}
 						}
 						if (typeof(location.measure) !== "undefined") {
-							var measure = this._roundNumber(location.measure, plusNotation);
-							var milePost = number.format(measure / 5280, {
+							var measure = this._roundNumber(location.measure, plusNotation, thousandSeparator);
+							milePost = number.format(measure / 5280, {
 									places: 2
 								});
 							if (plusNotation) {
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.continuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
-								if (showMilePost) {
-									content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>");
-								}
-
 							} else {
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.continuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
-								if (showMilePost) {
-									content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
-								}
+
 							}
 							if (status == "FromPartialMatch") {
 								csvData.ToConstStation = location.measure;
@@ -773,32 +753,37 @@ define([
 								}
 							}
 						}
+						if (showMilePost) {
+							if (typeof(location.fromMeasure) !== "undefined") {
+								content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromMilePostLabel + "</td><td class='attrValue'>" + fromMilePost + "</td></tr>");
+							}
+							if (typeof(location.toMeasure) !== "undefined") {
+								content.push("<tr valign='top'><td class='attrName'>" + this.nls.toMilePostLabel + "</td><td class='attrValue'>" + toMilePost + "</td></tr>");
+							}
+							if (typeof(location.measure) !== "undefined") {
+								content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
+							}
+						}
 					} else {
-						var measure = this._roundNumber(location.measure, plusNotation);
+						var measure = this._roundNumber(location.measure, plusNotation , thousandSeparator);
 						var milePost = number.format(measure / 5280, {
 								places: 2
 							});
+						csvData.ConstStation = location.measure;
+						csvData.MilePost = location.measure / 5280;
 						if (plusNotation) {
 							content.push("<tr valign='top'><td class='attrName'>" + this.nls.continuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
-							csvData.ConstStation = location.measure;
-							if (showMilePost) {
-								content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>");
-								csvData.MilePost = location.measure / 5280;
-							}
-
 						} else {
 							content.push("<tr valign='top'><td class='attrName'>" + this.nls.continuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
-							csvData.ConstStation = location.measure;
-							if (showMilePost) {
-								content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
-								csvData.MilePost = location.measure / 5280;
-							}
+						}
+						if (showMilePost) {
+							content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
 						}
 					}
 					array.forEach(translatedLocations, lang.hitch(this, function (translatedValue) {
 							if (endMeasure && endMeasure.replace(/\s/g, "") != "") {
 								if (typeof(translatedValue.fromMeasure) !== "undefined") {
-									var measure = this._roundNumber(translatedValue.fromMeasure, plusNotation);
+									var measure = this._roundNumber(translatedValue.fromMeasure, plusNotation , thousandSeparator);
 									if (plusNotation) {
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromEngineeringStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 									} else {
@@ -807,7 +792,7 @@ define([
 									csvData.FromStation = translatedValue.fromMeasure;
 								}
 								if (typeof(translatedValue.toMeasure) !== "undefined") {
-									measure = this._roundNumber(translatedValue.toMeasure, plusNotation);
+									measure = this._roundNumber(translatedValue.toMeasure, plusNotation, thousandSeparator);
 									if (plusNotation) {
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.toEngineeringStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 									} else {
@@ -816,7 +801,7 @@ define([
 									csvData.ToStation = translatedValue.toMeasure;
 								}
 								if (typeof(translatedValue.measure) !== "undefined") {
-									var measure = this._roundNumber(translatedValue.measure, plusNotation);
+									var measure = this._roundNumber(translatedValue.measure, plusNotation, thousandSeparator);
 									if (plusNotation) {
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.engineeringStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 									} else {
@@ -828,7 +813,7 @@ define([
 										csvData.FromStation = translatedValue.measure;
 								}
 							} else {
-								var measure = this._roundNumber(translatedValue.measure, plusNotation);
+								var measure = this._roundNumber(translatedValue.measure, plusNotation, thousandSeparator);
 								if (plusNotation) {
 									content.push("<tr valign='top'><td class='attrName'>" + this.nls.engineeringStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 								} else {
@@ -844,7 +829,7 @@ define([
 					//content.push("<br/>Route :" +location.routename);
 					if (endMeasure && endMeasure.replace(/\s/g, "") != "") {
 						if (typeof(location.fromMeasure) !== "undefined") {
-							var measure = this._roundNumber(location.fromMeasure, plusNotation);
+							var measure = this._roundNumber(location.fromMeasure, plusNotation, thousandSeparator);
 							if (plusNotation) {
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromEngineeringStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 							} else {
@@ -853,7 +838,7 @@ define([
 							csvData.FromStation = location.fromMeasure;
 						}
 						if (typeof(location.toMeasure) !== "undefined") {
-							measure = this._roundNumber(location.toMeasure, plusNotation);
+							measure = this._roundNumber(location.toMeasure, plusNotation, thousandSeparator);
 							if (plusNotation) {
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.toEngineeringStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 							} else {
@@ -862,7 +847,7 @@ define([
 							csvData.ToStation = location.toMeasure;
 						}
 						if (typeof(location.measure) !== "undefined") {
-							var measure = this._roundNumber(location.measure, plusNotation);
+							var measure = this._roundNumber(location.measure, plusNotation, thousandSeparator);
 							if (plusNotation) {
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.engineeringStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 							} else {
@@ -874,7 +859,7 @@ define([
 								csvData.FromStation = location.measure;
 						}
 					} else if (beginMeasure && beginMeasure.replace(/\s/g, "") != "") {
-						var measure = this._roundNumber(location.measure, plusNotation);
+						var measure = this._roundNumber(location.measure, plusNotation, thousandSeparator);
 						if (plusNotation) {
 							content.push("<tr valign='top'><td class='attrName'>" + this.nls.engineeringStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 						} else {
@@ -883,7 +868,7 @@ define([
 						csvData.Station = location.measure;
 					} else {
 						if (typeof(location.fromMeasure) !== "undefined") {
-							var measure = this._roundNumber(location.fromMeasure, plusNotation);
+							var measure = this._roundNumber(location.fromMeasure, plusNotation, thousandSeparator);
 							if (plusNotation) {
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromEngineeringStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 							} else {
@@ -892,7 +877,7 @@ define([
 							csvData.FromStation = location.fromMeasure;
 						}
 						if (typeof(location.toMeasure) !== "undefined") {
-							measure = this._roundNumber(location.toMeasure, plusNotation);
+							measure = this._roundNumber(location.toMeasure, plusNotation, thousandSeparator);
 							if (plusNotation) {
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.toEngineeringStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 							} else {
@@ -901,7 +886,7 @@ define([
 							csvData.ToStation = location.toMeasure;
 						}
 						if (typeof(location.measure) !== "undefined") {
-							var measure = this._roundNumber(location.measure, plusNotation);
+							var measure = this._roundNumber(location.measure, plusNotation, thousandSeparator);
 							if (plusNotation) {
 								content.push("<tr valign='top'><td class='attrName'>" + this.nls.engineeringStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 							} else {
@@ -916,64 +901,45 @@ define([
 					array.forEach(translatedLocations, lang.hitch(this, function (translatedValue) {
 							if (endMeasure && endMeasure.replace(/\s/g, "") != "") {
 								if (typeof(translatedValue.fromMeasure) !== "undefined") {
-									var measure = this._roundNumber(translatedValue.fromMeasure, plusNotation);
-									var milePost = number.format(translatedValue.fromMeasure / 5280, {
+									var measure = this._roundNumber(translatedValue.fromMeasure, plusNotation, thousandSeparator);
+									fromMilePost = number.format(translatedValue.fromMeasure / 5280, {
 											places: 2
 										});
+									csvData.FromMilePost = translatedValue.fromMeasure / 5280;
+									csvData.FromConstStation = translatedValue.fromMeasure;
 									if (plusNotation) {
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromMilePostLabel + "</td><td class='attrValue'>" + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>");
-											csvData.FromMilePost = translatedValue.fromMeasure / 5280;
-										}
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromContinuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
-										csvData.FromConstStation = translatedValue.fromMeasure;
 									} else {
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromMilePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
-											csvData.FromMilePost = translatedValue.fromMeasure / 5280;
-										}
+
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromContinuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
-										csvData.FromConstStation = translatedValue.fromMeasure;
-									}
-								}
-								if (typeof(translatedValue.toMeasure) !== "undefined") {
-									measure = this._roundNumber(translatedValue.toMeasure, plusNotation);
-									milePost = number.format(translatedValue.toMeasure / 5280, {
-											places: 2
-										});
-									if (plusNotation) {
-										content.push("<tr valign='top'><td class='attrName'>" + this.nls.toContinuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
-										csvData.ToConstStation = translatedValue.toMeasure;
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.toMilePostLabel + "</td><td class='attrValue'>" + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>");
-											csvData.ToMilePost = translatedValue.toMeasure / 5280;
-										}
-									} else {
-										content.push("<tr valign='top'><td class='attrName'>" + this.nls.toContinuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
-										csvData.ToConstStation = translatedValue.toMeasure;
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.toMilePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
-											csvData.ToMilePost = translatedValue.toMeasure / 5280;
-										}
 									}
 
 								}
+								if (typeof(translatedValue.toMeasure) !== "undefined") {
+									measure = this._roundNumber(translatedValue.toMeasure, plusNotation, thousandSeparator);
+									toMilePost = number.format(translatedValue.toMeasure / 5280, {
+											places: 2
+										});
+									csvData.ToConstStation = translatedValue.toMeasure;
+									csvData.ToMilePost = translatedValue.toMeasure / 5280;
+
+									if (plusNotation) {
+										content.push("<tr valign='top'><td class='attrName'>" + this.nls.toContinuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
+									} else {
+										content.push("<tr valign='top'><td class='attrName'>" + this.nls.toContinuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
+									}
+								}
 								if (typeof(translatedValue.measure) !== "undefined") {
-									var measure = this._roundNumber(translatedValue.measure, plusNotation);
-									var milePost = number.format(translatedValue.measure / 5280, {
+									var measure = this._roundNumber(translatedValue.measure, plusNotation, thousandSeparator);
+									milePost = number.format(translatedValue.measure / 5280, {
 											places: 2
 										});
 									if (plusNotation) {
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.continuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>");
-										}
 									} else {
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.continuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
-										}
 									}
+
 									if (status == "FromPartialMatch") {
 										csvData.ToConstStation = translatedValue.measure;
 										if (showMilePost) {
@@ -984,88 +950,76 @@ define([
 										if (showMilePost) {
 											csvData.FromMilePost = translatedValue.measure / 5280;
 										}
+									}
+								}
+								if (showMilePost) {
+									if (typeof(translatedValue.fromMeasure) !== "undefined") {
+										content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromMilePostLabel + "</td><td class='attrValue'>" + fromMilePost + "</td></tr>");
+									}
+									if (typeof(translatedValue.toMeasure) !== "undefined") {
+										content.push("<tr valign='top'><td class='attrName'>" + this.nls.toMilePostLabel + "</td><td class='attrValue'>" + toMilePost + "</td></tr>");
+									}
+									if (typeof(translatedValue.measure) !== "undefined") {
+										content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
 									}
 								}
 							} else if (beginMeasure && beginMeasure.replace(/\s/g, "") != "") {
-								var measure = this._roundNumber(translatedValue.measure, plusNotation);
+								var measure = this._roundNumber(translatedValue.measure, plusNotation, thousandSeparator);
 								var milePost = number.format(translatedValue.measure / 5280, {
 										places: 2
 									});
+								csvData.MilePost = translatedValue.measure / 5280;
+								csvData.ConstStation = translatedValue.measure;
 								if (plusNotation) {
-									if (showMilePost) {
-										content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromMilePostLabel + "</td><td class='attrValue'>" + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>");
-										csvData.FromMilePost = translatedValue.measure / 5280;
-									}
-									content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromContinuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
-									csvData.FromConstStation = translatedValue.measure;
+									content.push("<tr valign='top'><td class='attrName'>" + this.nls.continuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
 								} else {
-									if (showMilePost) {
-										content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
-										csvData.MilePost = translatedValue.measure / 5280;
-									}
 									content.push("<tr valign='top'><td class='attrName'>" + this.nls.continuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
-									csvData.ConstStation = translatedValue.measure;
-
+								}
+								if (showMilePost) {
+									content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
 								}
 							} else {
 								if (typeof(translatedValue.fromMeasure) !== "undefined") {
-									var measure = this._roundNumber(translatedValue.fromMeasure, plusNotation);
-									var milePost = number.format(translatedValue.fromMeasure / 5280, {
+									var measure = this._roundNumber(translatedValue.fromMeasure, plusNotation, thousandSeparator);
+									fromMilePost = number.format(translatedValue.fromMeasure / 5280, {
 											places: 2
 										});
+									csvData.FromConstStation = translatedValue.fromMeasure;
+									csvData.FromMilePost = translatedValue.fromMeasure / 5280;
+
 									if (plusNotation) {
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromContinuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
-										csvData.FromConstStation = translatedValue.fromMeasure;
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromMilePostLabel + "</td><td class='attrValue'>" + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>");
-											csvData.FromMilePost = translatedValue.fromMeasure / 5280;
-										}
 									} else {
-										content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromMilePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
-										csvData.FromConstStation = translatedValue.fromMeasure;
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromContinuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
-											csvData.FromMilePost = translatedValue.fromMeasure / 5280;
-										}
+										content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromContinuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
 									}
 								}
 								if (typeof(translatedValue.toMeasure) !== "undefined") {
-									measure = this._roundNumber(translatedValue.toMeasure, plusNotation);
-									milePost = number.format(translatedValue.toMeasure / 5280, {
+									measure = this._roundNumber(translatedValue.toMeasure, plusNotation, thousandSeparator);
+									toMilePost = number.format(translatedValue.toMeasure / 5280, {
 											places: 2
-										});
+										})
+										csvData.ToConstStation = translatedValue.toMeasure;
+									csvData.ToMilePost = translatedValue.toMeasure / 5280;
+
 									if (plusNotation) {
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.toContinuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
-										csvData.ToConstStation = translatedValue.toMeasure;
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.toMilePostLabel + "</td><td class='attrValue'>" + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>");
-											csvData.ToMilePost = translatedValue.toMeasure / 5280;
-										}
+
 									} else {
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.toContinuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
-										csvData.ToConstStation = translatedValue.toMeasure;
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.toMilePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
-											csvData.ToMilePost = translatedValue.toMeasure / 5280;
-										}
+
 									}
 								}
 								if (typeof(translatedValue.measure) !== "undefined") {
-									var measure = this._roundNumber(translatedValue.measure, plusNotation);
-									var milePost = number.format(translatedValue.measure / 5280, {
+									var measure = this._roundNumber(translatedValue.measure, plusNotation, thousandSeparator);
+									milePost = number.format(translatedValue.measure / 5280, {
 											places: 2
 										});
 									if (plusNotation) {
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.continuousStationLabel + "</td><td class='attrValue'>" + [measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") + "</td></tr>");
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>");
-										}
 
 									} else {
 										content.push("<tr valign='top'><td class='attrName'>" + this.nls.continuousStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>");
-										if (showMilePost) {
-											content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
-										}
+
 									}
 									if (status == "FromPartialMatch") {
 										csvData.ToConstStation = translatedValue.measure;
@@ -1077,6 +1031,17 @@ define([
 										if (showMilePost) {
 											csvData.FromMilePost = translatedValue.measure / 5280;
 										}
+									}
+								}
+								if (showMilePost) {
+									if (typeof(translatedValue.fromMeasure) !== "undefined") {
+										content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromMilePostLabel + "</td><td class='attrValue'>" + fromMilePost + "</td></tr>");
+									}
+									if (typeof(translatedValue.toMeasure) !== "undefined") {
+										content.push("<tr valign='top'><td class='attrName'>" + this.nls.toMilePostLabel + "</td><td class='attrValue'>" + toMilePost + "</td></tr>");
+									}
+									if (typeof(translatedValue.measure) !== "undefined") {
+										content.push("<tr valign='top'><td class='attrName'>" + this.nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>");
 									}
 								}
 							}
@@ -1102,25 +1067,49 @@ define([
 					symbol = jsonUtils.fromJson(this.config.measureToGeometryPointSymbol);
 					var geom = webMercatorUtils.webMercatorToGeographic(geometry, false);
 					if (status == "FromPartialMatch") {
-						csvData.ToLatLong = "(" + geom.y + "," + geom.x + ")";
+						csvData.ToLatLong = "" + geom.y + "," + geom.x + "";
 					} else if (status == "ToPartialMatch") {
-						csvData.FromLatLong = "(" + geom.y + "," + geom.x + ")";
+						csvData.FromLatLong = "" + geom.y + "," + geom.x + "";
 					} else {
 						csvData.Lat = geom.y;
 						csvData.Long = geom.x;
 					}
 					// create a text symbol
-					var textSymbol;
-					if (this.contRadio.checked || this.mileRadio.checked) {
-						textSymbol = new TextSymbol(
-								this._roundNumber(csvData.ConstStation, plusNotation),
-								font, new Color([0, 0, 0]));
+					var textSymbol , measure;
+					if (this.contRadio.checked) {
+						if (status == "FromPartialMatch") {
+							measure = this._roundNumber(csvData.ToConstStation, plusNotation, thousandSeparator);
+						} else if (status == "ToPartialMatch") {
+							measure = this._roundNumber(csvData.FromConstStation, plusNotation, thousandSeparator);
+						} else {
+							meaure = this._roundNumber(csvData.ConstStation, plusNotation, thousandSeparator);
+						}
+						if(plusNotation)
+							this.textSymbol.setText([measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") );
+						else 
+							this.textSymbol.setText(measure);
+					} else if (this.mileRadio.checked) {
+						if (status == "FromPartialMatch") {
+							this.textSymbol.setText(number.format(csvData.ToMilePost, {places: 2}));
+						} else if (status == "ToPartialMatch") {
+							this.textSymbol.setText(number.format(csvData.FromMilePost, {places: 2}));
+						} else {
+							this.textSymbol.setText(number.format(csvData.MilePost, {places: 2}));
+						}
 					} else {
-						textSymbol = new TextSymbol(
-								this._roundNumber(csvData.Station, plusNotation),
-								font, new Color([0, 0, 0]));
+						if (status == "FromPartialMatch") {
+							measure = this._roundNumber(csvData.ToStation, plusNotation, thousandSeparator);
+						} else if (status == "ToPartialMatch") {
+							measure = this._roundNumber(csvData.FromStation, plusNotation, thousandSeparator);
+						} else {
+							measure = this._roundNumber(csvData.Station, plusNotation, thousandSeparator);
+						}
+						if(plusNotation)
+							this.textSymbol.setText([measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") );
+						else 
+							this.textSymbol.setText(measure);
 					}
-					geomGraphic = new Graphic(geom, textSymbol);
+					geomGraphic = new Graphic(geom, new TextSymbol(this.textSymbol.toJson()));
 					content.push("<tr valign='top'><td class='attrName'>" + this.nls.latitudeLabel + "</td><td class='attrValue'>" + _formatNumber(geom.y, 6) + "</td></tr>");
 					content.push("<tr valign='top'><td class='attrName'>" + this.nls.longitudeLabel + "</td><td class='attrValue'>" + _formatNumber(geom.x, 6) + "</td></tr>");
 				} else {
@@ -1133,52 +1122,99 @@ define([
 						var lastPartIdx = geom.paths.length - 1;
 					var lastPntIdx = geom.paths[lastPartIdx].length - 1;
 					var lastPnt = geom.getPoint(lastPartIdx, lastPntIdx);
-					content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromLatLongLabel + "</td><td class='attrValue'>" + "(" + _formatNumber(firstPoint.y, 6) + "," + _formatNumber(firstPoint.x, 6) + ")" + "</td></tr>");
-					content.push("<tr valign='top'><td class='attrName'>" + this.nls.toLatLongLabel + "</td><td class='attrValue'>" + "(" + _formatNumber(lastPnt.y, 6) + "," + _formatNumber(lastPnt.x, 6) + ")" + "</td></tr>");
-					csvData.FromLatLong = "(" + firstPoint.y + "," + firstPoint.x + ")";
-					csvData.ToLatLong = "(" + lastPnt.y + "," + lastPnt.x + ")";
-					firstPointMarker = new Graphic(firstPoint, this._pictSymbol);
+					content.push("<tr valign='top'><td class='attrName'>" + this.nls.fromLatLongLabel + "</td><td class='attrValue'>" + "" + _formatNumber(firstPoint.y, 6) + "," + _formatNumber(firstPoint.x, 6) + "" + "</td></tr>");
+					content.push("<tr valign='top'><td class='attrName'>" + this.nls.toLatLongLabel + "</td><td class='attrValue'>" + "" + _formatNumber(lastPnt.y, 6) + "," + _formatNumber(lastPnt.x, 6) + "" + "</td></tr>");
+					csvData.FromLatLong = "" + firstPoint.y + "," + firstPoint.x + "";
+					csvData.ToLatLong = "" + lastPnt.y + "," + lastPnt.x + "";
+					firstPointMarker = new Graphic(firstPoint, this.markerSymbol);
 					// create a text symbol
-					var textSymbol;
-					if (this.contRadio.checked || this.mileRadio.checked) {
-						textSymbol = new TextSymbol(
-								this._roundNumber(csvData.FromConstStation, plusNotation),
-								font, new Color([0, 0, 0]));
+					var textSymbol, meaure;
+					if (this.contRadio.checked) {
+						measure = this._roundNumber(csvData.FromConstStation, plusNotation, thousandSeparator);
+						if(plusNotation)
+							this.textSymbol.setText([measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") );
+						else 
+							this.textSymbol.setText(measure);
+					} else if (this.mileRadio.checked) {
+						this.textSymbol.setText(number.format(csvData.FromMilePost, {places: 2}));
 					} else {
-						textSymbol = new TextSymbol(
-								this._roundNumber(csvData.FromStation, plusNotation),
-								font, new Color([0, 0, 0]));
+						measure = this._roundNumber(csvData.FromStation, plusNotation, thousandSeparator);
+						if(plusNotation)
+							this.textSymbol.setText([measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") );
+						else 
+							this.textSymbol.setText(measure);
 					}
-					firstPointLabel = new Graphic(firstPoint, textSymbol);
-					lastPointMarker = new Graphic(lastPnt, this._pictSymbol);
+					firstPointLabel = new Graphic(firstPoint,new TextSymbol(this.textSymbol.toJson()));
+					lastPointMarker = new Graphic(lastPnt, this.markerSymbol);
 					// create a text symbol
-					var textSymbol;
-					if (this.contRadio.checked || this.mileRadio.checked) {
-						textSymbol = new TextSymbol(
-								this._roundNumber(csvData.ToConstStation, plusNotation),
-								font, new Color([0, 0, 0]));
+					var textSymbol, measure;
+					if (this.contRadio.checked) {
+						measure = this._roundNumber(csvData.ToConstStation, plusNotation, thousandSeparator);
+						if(plusNotation)
+							this.textSymbol.setText([measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") );
+						else 
+							this.textSymbol.setText(measure);
+					} else if (this.mileRadio.checked) {
+						this.textSymbol.setText(number.format(csvData.ToMilePost, {places: 2}));
 					} else {
-						textSymbol = new TextSymbol(
-								this._roundNumber(csvData.ToStation, plusNotation),
-								font, new Color([0, 0, 0]));
+						measure = this._roundNumber(csvData.ToStation, plusNotation, thousandSeparator);
+						if(plusNotation)
+							this.textSymbol.setText([measure.substr(0, measure.length - 2), "+", measure.substr(measure.length - 2)].join("") );
+						else 
+							this.textSymbol.setText(measure);
 					}
-					lastPointLabel = new Graphic(lastPnt, textSymbol);
+					lastPointLabel = new Graphic(lastPnt, new TextSymbol(this.textSymbol.toJson()));
 				}
 				_geoms.push(geometry);
 				this.map.graphics.add(new Graphic(geometry, symbol));
 				if (geomGraphic) {
 					// add the label point graphic to the map
-					this.map.graphics.add(geomGraphic);
+					var ifExists = this.map.graphics.graphics.filter(function(grap){
+						return geometryEngine.equals(grap.geometry, geomGraphic.geometry) && grap.symbol.type=== geomGraphic.symbol.type;
+					})
+					
+					if(ifExists.length==0){ 
+						this.map.graphics.add(geomGraphic);
+					} else {
+						if(ifExists[0].symbol.text!== geomGraphic.symbol.text){
+							geomGraphic.symbol.setHorizontalAlignment("right");
+							geomGraphic.symbol.setVerticalAlignment("top");
+							this.map.graphics.add(geomGraphic);
+						}
+					}		
 				}
 				if (firstPointMarker) {
 					this.map.graphics.add(firstPointMarker);
 					// add the label point graphic to the map
-					this.map.graphics.add(firstPointLabel);
+					var ifExists = this.map.graphics.graphics.filter(function(grap){
+						return geometryEngine.equals(grap.geometry, firstPointLabel.geometry) && grap.symbol.type=== firstPointLabel.symbol.type;
+					})
+					if(ifExists.length==0){ 
+						this.map.graphics.add(firstPointLabel);
+					} else {
+						if(ifExists[0].symbol.text!== firstPointLabel.symbol.text){
+							firstPointLabel.symbol.setHorizontalAlignment("right");
+							firstPointLabel.symbol.setVerticalAlignment("top");
+							this.map.graphics.add(firstPointLabel);
+						}
+					}	
+					
 				}
 				if (lastPointMarker) {
 					this.map.graphics.add(lastPointMarker);
 					// add the label point graphic to the map
-					this.map.graphics.add(lastPointLabel);
+					var ifExists = this.map.graphics.graphics.filter(function(grap){
+						return geometryEngine.equals(grap.geometry, lastPointLabel.geometry)&& grap.symbol.type=== lastPointLabel.symbol.type;
+					})
+					if(ifExists.length==0){ 
+						this.map.graphics.add(lastPointLabel);
+					} else {
+						if(ifExists[0].symbol.text!== lastPointLabel.symbol.text){
+							lastPointLabel.symbol.setHorizontalAlignment("right");
+							lastPointLabel.symbol.setVerticalAlignment("top");
+							this.map.graphics.add(lastPointLabel);
+						}
+					}
 				}
 				//content.push("<br/>Status: " + status);
 				//content.push("<br/>Geometry Type: " + geometryType);
@@ -1231,9 +1267,7 @@ define([
 			var infos = array.filter(this._csvInfos, function (info) {
 					return info.geom === graphic.geometry
 				});
-			console.log({
-				infos
-			});
+
 			if (infos && infos.length > 0) {}
 		},
 		_getRouteInfoFromResults: function (routeId, results, targetNetworkLayerId) {
@@ -1516,14 +1550,18 @@ define([
 				places: 6
 			});
 		},
-		_roundNumber: function (value, plusNotation) {
+		_roundNumber: function (value, plusNotation, thousandSeparator) {
 			if (plusNotation) {
 				return number.format(Math.round(value), {
 					pattern: '#####000'
 				});
-			} else {
+			} else if (thousandSeparator){
 				return number.format(Math.round(value), {
 					places: 0
+				});
+			} else{
+				return number.format(Math.round(value), {
+					pattern: '#'
 				});
 			}
 		},
@@ -1535,6 +1573,7 @@ define([
 			var _formatNumber = this._formatNumber;
 			var _roundNumber = this._roundNumber;
 			var plusNotation = this.config.plusNotation;
+			var thousandSeparator = this.config.thousandSeparator;
 			var showMilePost = this.config.showMilePost;
 			var routeIdField = this.continuousLayer.routeIdField;
 			var translatedResponse = fullResponse.translatedResponse;
@@ -1576,7 +1615,7 @@ define([
 						status = status.substring("esriLocating".length);
 					}
 					if (status === "MultipleLocation") {
-						distance = "<br/><b>" + nls.distanceLabel + " " + nls.notApplicableValue + "</b><br/>";
+						distance = "<br/><b><div class='attrName' style='float: left;'>" + nls.distanceLabel + "</div><div class='attrValue'>" + nls.notApplicableValue + "</div></b><br/>";
 						isSingleResult = false;
 						//  status = nls.multiplePipes;
 					} else if (status === "OK") {
@@ -1586,7 +1625,7 @@ define([
 						isSingleResult = true;
 						//  status = nls.pipeLocated;
 					} else if (status === "CannotFindLocation") {
-						distance = "<br/><b>" + nls.distanceLabel + " " + nls.notApplicableValue + "</b><br/>";
+						distance = "<br/><b><div class='attrName'  style='float: left;'>" + nls.distanceLabel + "</div><div class='attrValue'> " + nls.notApplicableValue + "</div></b><br/>";
 						isSingleResult = false;
 						content += "<br/><br/><b>" + nls.noResult + (i + 1) + ".</b><br/>";
 					}
@@ -1614,23 +1653,25 @@ define([
 						lang.mixin(csvData, {
 							Status: status
 						});
-						if (translatedLocations.length > 0) {
-							//routeTranslation = translatedLocations[j];
-							routeTranslation = null;
-							var transLocs = array.filter(translatedLocations, function (translatedLocation) {
-									return translatedLocation.routeId === routeId && translatedLocation.measure.toFixed(9) === measureVal.toFixed(9);
-								});
-							if (transLocs && transLocs.length > 0) {
-								console.log(transLocs);
-								routeTranslation = transLocs.length == 1 ? transLocs[0] : transLocs[j];
-							}
-						}
+						
 						if (routeInfos.length > 0 && routeInfos[j]) {
 							var ris = array.filter(routeInfos, function (ri) {
 									return ri.attributes[routeIdField] == routeId
 								});
 							routeInfo = ris[0].attributes;
 						}
+						
+						if (translatedLocations.length > 0) {
+							//routeTranslation = translatedLocations[j];
+							routeTranslation = null;
+							routeTranslation = array.filter(translatedLocations, function (translatedLocation) {
+									return translatedLocation.routeId === routeId && translatedLocation.measure.toFixed(9) === measureVal.toFixed(9);
+								})[0];
+							routeTranslation.translatedLocations = array.filter(routeTranslation.translatedLocations, lang.hitch(this, function(tranLoc){
+								return tranLoc.routeId == routeInfo[this.engineeringLayer.lineIdField]
+							}))
+						}
+						
 						content += "<tr><td>" + (j + 1) + "</td><td><table class='attrTable' cellpadding='5px' cellspacing='5px'><tbody>";
 						//  content += "<tr valign='top'><td class='attrName'>Route Name:</td><td class='attrValue'>" + routeInfo["routename"] + "</td></tr>";
 						if (routeInfo) {
@@ -1644,7 +1685,7 @@ define([
 							content += "<tr valign='top'><td class ='attrName'>" + nls.latitudeLabel + "</td><td class='attrValue'>" + _formatNumber(normalizedVal[1], 6) + "</td></tr>";
 							content += "<tr valign='top'><td class ='attrName'>" + nls.longitudeLabel + "</td><td class='attrValue'>" + _formatNumber(normalizedVal[0], 6) + "</td></tr>";
 						}
-						var measure = _roundNumber(measureVal, plusNotation);
+						var measure = _roundNumber(measureVal, plusNotation , thousandSeparator);
 						lang.mixin(csvData, {
 							Station: measure
 						});
@@ -1654,28 +1695,26 @@ define([
 							content += "<tr valign='top'><td class='attrName'>" + nls.engineeringStationLabel + "</td><td class='attrValue'>" + measure + "</td></tr>";
 						}
 						if (routeTranslation) {
-							var translatedMeasure = _roundNumber(routeTranslation.translatedLocations[0].measure, plusNotation);
+							var translatedMeasure = _roundNumber(routeTranslation.translatedLocations[0].measure, plusNotation, thousandSeparator);
 							var milePost = number.format((routeTranslation.translatedLocations[0].measure / 5280), {
 									places: 2
 								});
 							lang.mixin(csvData, {
 								ContStation: translatedMeasure
 							});
+
+							if (this.config.plusNotation && translatedMeasure) {
+								content += "<tr valign='top'><td class='attrName'>" + nls.continuousStationLabel + "</td><td class='attrValue'> " + [translatedMeasure.substr(0, translatedMeasure.length - 2), "+", translatedMeasure.substr(translatedMeasure.length - 2)].join("") + "</td></tr>";
+
+							} else {
+								content += "<tr valign='top'><td class='attrName'>" + nls.continuousStationLabel + "</td><td class='attrValue'>" + translatedMeasure + "</td></tr>";
+
+							}
 							if (showMilePost) {
 								lang.mixin(csvData, {
 									MilePost: milePost
 								});
-							}
-							if (this.config.plusNotation && translatedMeasure) {
-								content += "<tr valign='top'><td class='attrName'>" + nls.continuousStationLabel + "</td><td class='attrValue'> " + [translatedMeasure.substr(0, translatedMeasure.length - 2), "+", translatedMeasure.substr(translatedMeasure.length - 2)].join("") + "</td></tr>";
-								if (showMilePost) {
-									content += "<tr valign='top'><td class='attrName'>" + nls.milePostLabel + "</td><td class='attrValue'> " + [milePost.substr(0, milePost.length - 2), "+", milePost.substr(milePost.length - 2)].join("") + "</td></tr>";
-								}
-							} else {
-								content += "<tr valign='top'><td class='attrName'>" + nls.continuousStationLabel + "</td><td class='attrValue'>" + translatedMeasure + "</td></tr>";
-								if (showMilePost) {
-									content += "<tr valign='top'><td class='attrName'>" + nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>";
-								}
+								content += "<tr valign='top'><td class='attrName'>" + nls.milePostLabel + "</td><td class='attrValue'>" + milePost + "</td></tr>";
 							}
 						}
 						content += "</table></td></tr>";
@@ -1737,7 +1776,7 @@ define([
 							var mileage = number.format(footage / 5280, {
 									places: 2
 								});
-							distance = "<br/>" + nls.distanceLabel + footage + " feet<br/>" + nls.mileageLabel + mileage;
+							distance = "<br/><div class='attrName'  style='float: left;'>" + nls.distanceLabel + "</div><div class='attrValue'>" + number.format(footage) + " feet</div><div class='attrName' style='float: left;'>" + nls.mileageLabel + "</div><div class='attrValue'>" + mileage + "</div>";
 						}
 					}
 				}

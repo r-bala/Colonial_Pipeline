@@ -201,11 +201,8 @@ define(["dojo/_base/declare",
 						var test = '<div class="intro">' +
 							'<label>' + this.i18n.addFromFile.intro + "</label>" +
 							'<ul>' +
-							'<li>' + this.i18n.addFromFile.types.Shapefile + '</li>' +
 							'<li>' + this.i18n.addFromFile.types.CSV + '</li>' +
 							'<li>' + this.i18n.addFromFile.types.KML + '</li>' +
-							'<li>' + this.i18n.addFromFile.types.GPX + '</li>' +
-							'<li>' + this.i18n.addFromFile.types.GeoJSON + '</li>' +
 							'<li><span class="note">' + this.i18n.addFromFile.maxFeaturesAllowedPattern
 							.replace("{count}", this.maxRecordCount) + '</span></li>' +
 							'</ul>' +
@@ -474,7 +471,7 @@ define(["dojo/_base/declare",
 													var doc = parser.parseFromString(desc, "text/html");
 													if (doc.getElementsByTagName("table") && doc.getElementsByTagName("table").length>0) {
 														var obj = {};
-														var test = [].map.call((doc.getElementsByTagName("table")[1]).querySelectorAll('tr'), (tr, index) => {
+														var test = [].map.call((doc.getElementsByTagName("table")[1]).querySelectorAll('tr'), function(tr, index) {
 															console.log(tr);
 															var arr = tr.getElementsByTagName("td");
 															if (gIndex == 0) {
@@ -546,7 +543,7 @@ define(["dojo/_base/declare",
 
 		isHTML: function (str) {
 			var doc = new DOMParser().parseFromString(str, "text/html");
-			return Array.from(doc.body.childNodes).some(node => node.nodeType === 1);
+			return Array.from(doc.body.childNodes).some(function(node){ node.nodeType === 1});
 		},
 
 		_executeCsv: function (fileInfo) {
@@ -620,7 +617,7 @@ define(["dojo/_base/declare",
 								attributes[attr] = isNaN(value) ? csvStore.getValue(item, attr) : value;
 							});
 
-							attributes["__OBJECTID"] = objectId;
+							attributes["___OBJECTID"] = objectId;
 							objectId++;
 
 							// var latitude = parseFloat(attributes[latField]);
@@ -643,15 +640,13 @@ define(["dojo/_base/declare",
 						_self._setBusy(false);
 						_self._setStatus(_self.i18n.addFromFile.featureCountPattern
 							.replace("{filename}", fileInfo.fileName)
-							.replace("{count}", num));
+							.replace("{count}", featureCollection.featureSet.features.length));
 					},
 					onError: function (error) {
 						// status.innerHTML = '<br/>Error fetching items from CSV store. ' + error.message;
-						console.error("Error fetching items from CSV store: ", error);
-						new Message({
-							message: _this.nls.fileNotProcessed
-						});
-						return null;
+						console.warn("Error fetching items from CSV store: ", error);
+						_self._setBusy(false);
+						topic.publish("DnDFeatures", []);
 					}
 				});
 			};
@@ -754,7 +749,7 @@ define(["dojo/_base/declare",
 			};
 			featureCollection.layerDefinition = {
 				"geometryType": "esriGeometryPoint",
-				"objectIdField": "__OBJECTID",
+				"objectIdField": "___OBJECTID",
 				"type": "Feature Layer",
 				"typeIdField": "",
 				"drawingInfo": {
@@ -771,8 +766,8 @@ define(["dojo/_base/declare",
 					}
 				},
 				"fields": [{
-						"name": "__OBJECTID",
-						"alias": "__OBJECTID",
+						"name": "___OBJECTID",
+						"alias": "___OBJECTID",
 						"type": "esriFieldTypeOID",
 						"editable": false,
 						"domain": null

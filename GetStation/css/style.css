@@ -57,6 +57,11 @@
   margin-top: 8px;
 }
 
+.disable {
+	pointer-events: none;
+	color: gray;
+}
+
 .btn-add-section .btn-add-icon {
   float: left;
   height: 100%;
